@@ -1,0 +1,1855 @@
+{
+  "b0": {
+    "details": {
+      "authors": [
+        "Min Bai",
+        "Raquel Urtasun"
+      ],
+      "title": "Deep watershed transform for instance segmentation",
+      "year": "2017",
+      "venue": "cvpr",
+      "arxiv_id": null
+    },
+    "references": [
+      "Pioneer methods explore different paradigms to tackle this task, including mask classification  [60, 61] , 'Top-Down  ' [8, 31] , and 'Bottom-Up' approaches  [1, 39, 58]"
+    ]
+  },
+  "b1": {
+    "details": {
+      "authors": [
+        "Maxim Berman",
+        "Hervé Jégou",
+        "Andrea Vedaldi",
+        "Iasonas Kokkinos",
+        "Matthijs Douze"
+      ],
+      "title": "Multigrain: a unified image embedding for classes and instances",
+      "year": "2019",
+      "venue": "Multigrain: a unified image embedding for classes and instances",
+      "arxiv_id": "1902.05509"
+    },
+    "references": []
+  },
+  "b2": {
+    "details": {
+      "authors": [
+        "Alexey Bochkovskiy",
+        "Chien-Yao Wang",
+        "Hong-Yuan Mark Liao"
+      ],
+      "title": "YOLOv4: Optimal speed and accuracy of object detection",
+      "year": "2007",
+      "venue": "YOLOv4: Optimal speed and accuracy of object detection",
+      "arxiv_id": "2004.10934"
+    },
+    "references": [
+      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck",
+      "1 , RTMDet achieves a better parameter-accuracy trade-off than previous methods and gains superior performance to previous models  [3, 21, 25, 65]",
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]",
+      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
+      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
+      "Inspired by these findings, we introduce 5×5 depth-wise convolutions in the basic building block of CSPDarkNet  [3]  to increase the effective receptive fields (Fig",
+      "Recent advances of YOLO series  [3, 21]  typically adopt CSPDarkNet  [3]  as the backbone architecture, which contains four stages and each stage is stacked with several basic building blocks (Fig",
+      "We first compare the effectiveness of different kernel sizes in the basic building block of CSPDarkNet  [3] , with kernel sizes ranging from 3×3 to 7×7"
+    ]
+  },
+  "b3": {
+    "details": {
+      "authors": [
+        "Daniel Bolya",
+        "Chong Zhou",
+        "Fanyi Xiao",
+        "Yong Jae Lee"
+      ],
+      "title": "Yolact: Real-time instance segmentation",
+      "year": "2019",
+      "venue": "2019 IEEE/CVF International Conference on Computer Vision (ICCV)",
+      "arxiv_id": null
+    },
+    "references": [
+      "Recent attempts perform instance segmentation in one stage with  [4, 69]  or without bounding boxes  [76, 77, 96]"
+    ]
+  },
+  "b4": {
+    "details": {
+      "authors": [
+        "Zhaowei Cai",
+        "Nuno Vasconcelos"
+      ],
+      "title": "Cascade R-CNN: Delving into high quality object detection",
+      "year": "2018",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]"
+    ]
+  },
+  "b5": {
+    "details": {
+      "authors": [
+        "Nicolas Carion",
+        "Francisco Massa",
+        "Gabriel Synnaeve",
+        "Nicolas Usunier",
+        "Alexander Kirillov",
+        "Sergey Zagoruyko"
+      ],
+      "title": "End-toend object detection with transformers",
+      "year": "2020",
+      "venue": "ECCV",
+      "arxiv_id": null
+    },
+    "references": [
+      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy",
+      "Recent advances typically adopt dynamic label assignment strategies  [6, 20, 21]  that use cost functions consistent with the training loss as the matching criterion"
+    ]
+  },
+  "b6": {
+    "details": {
+      "authors": [
+        "Kai Chen",
+        "Yuhang Cao",
+        "Chen Change Loy",
+        "Dahua Lin",
+        "Christoph Feichtenhofer"
+      ],
+      "title": "Feature pyramid grids",
+      "year": "2020",
+      "venue": "arXiv: Computer Vision and Pattern Recognition",
+      "arxiv_id": null
+    },
+    "references": [
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]"
+    ]
+  },
+  "b7": {
+    "details": {
+      "authors": [
+        "Kai Chen",
+        "Jiangmiao Pang",
+        "Jiaqi Wang",
+        "Yu Xiong",
+        "Xiaoxiao Li",
+        "Shuyang Sun",
+        "Wansen Feng",
+        "Ziwei Liu",
+        "Jianping Shi",
+        "Wanli Ouyang",
+        "Chen Change Loy",
+        "Dahua Lin"
+      ],
+      "title": "Hybrid task cascade for instance segmentation",
+      "year": "2019-06",
+      "venue": "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b8": {
+    "details": {
+      "authors": [
+        "Kai Chen",
+        "Jiaqi Wang",
+        "Jiangmiao Pang",
+        "Yuhang Cao",
+        "Yu Xiong",
+        "Xiaoxiao Li",
+        "Shuyang Sun",
+        "Wansen Feng",
+        "Ziwei Liu",
+        "Jiarui Xu",
+        "Zheng Zhang",
+        "Dazhi Cheng",
+        "Chenchen Zhu",
+        "Tianheng Cheng",
+        "Qijie Zhao",
+        "Buyu Li",
+        "Xin Lu",
+        "Rui Zhu",
+        "Yue Wu",
+        "Jifeng Dai",
+        "Jingdong Wang",
+        "Jianping Shi",
+        "Wanli Ouyang",
+        "Chen Change Loy",
+        "Dahua Lin"
+      ],
+      "title": "MMDetection: Open Oriented RCNN",
+      "year": null,
+      "venue": "MMDetection: Open Oriented RCNN",
+      "arxiv_id": null
+    },
+    "references": [
+      "To evaluate the superiority of our label assignment strategy and loss, we first compare RTMDet-Ins with conventional methods using the standard ResNet50-FPN  [46]  backbone and the classic multi-scale 3x schedule  [9, 80]"
+    ]
+  },
+  "b9": {
+    "details": {
+      "authors": [],
+      "title": "RTMDet-R-tiny 800×800 90.60 97.10 mmlab detection toolbox and benchmark",
+      "year": null,
+      "venue": "RTMDet-R-tiny 800×800 90.60 97.10 mmlab detection toolbox and benchmark",
+      "arxiv_id": "1906.07155"
+    },
+    "references": []
+  },
+  "b10": {
+    "details": {
+      "authors": [
+        "Yukang Chen",
+        "Tong Yang",
+        "Xiangyu Zhang",
+        "Gaofeng Meng",
+        "Xinyu Xiao",
+        "Jian Sun"
+      ],
+      "title": "DetNAS: Backbone search for object detection",
+      "year": "2019",
+      "venue": "DetNAS: Backbone search for object detection",
+      "arxiv_id": "1903.10979"
+    },
+    "references": [
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]"
+    ]
+  },
+  "b11": {
+    "details": {
+      "authors": [
+        "Tianheng Cheng",
+        "Xinggang Wang",
+        "Shaoyu Chen",
+        "Wenqiang Zhang",
+        "Qian Zhang",
+        "Chang Huang",
+        "Zhaoxiang Zhang",
+        "Wenyu Liu"
+      ],
+      "title": "Sparse instance activation for real-time instance segmentation",
+      "year": "2022",
+      "venue": "Proc. IEEE Conf. Computer Vision and Pattern Recognition (CVPR)",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b12": {
+    "details": {
+      "authors": [
+        "Jian Ding",
+        "Nan Xue",
+        "Yang Long",
+        "Gui-Song Xia",
+        "Qikai Lu"
+      ],
+      "title": "Learning roi transformer for oriented object detection in aerial images",
+      "year": "2019",
+      "venue": "Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b13": {
+    "details": {
+      "authors": [
+        "Xiaohan Ding",
+        "Honghao Chen",
+        "Xiangyu Zhang",
+        "Kaiqi Huang",
+        "Jungong Han",
+        "Guiguang Ding"
+      ],
+      "title": "Reparameterizing your optimizers rather than architectures",
+      "year": "2022",
+      "venue": "Reparameterizing your optimizers rather than architectures",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b14": {
+    "details": {
+      "authors": [
+        "Xiaohan Ding",
+        "Xiangyu Zhang",
+        "Ningning Ma",
+        "Jungong Han",
+        "Guiguang Ding",
+        "Jian Sun"
+      ],
+      "title": "RepVGG: Making VGG-style convnets great again",
+      "year": "2021",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "It is noteworthy that some recent real-time object detectors  [42, 71, 84]  explore re-parameterized 3×3 convolutions  [14]  in the basic building block (Fig",
+      "Recent advances also explore model re-parameterization  [14, 42, 71, 84]  to improve the inference speed after model deployment"
+    ]
+  },
+  "b15": {
+    "details": {
+      "authors": [
+        "Xiaohan Ding",
+        "Xiangyu Zhang",
+        "Yizhuang Zhou",
+        "Jungong Han",
+        "Guiguang Ding",
+        "Jian Sun"
+      ],
+      "title": "Scaling up your kernels to 31x31: Revisiting large kernel design in cnns",
+      "year": "2022",
+      "venue": "Scaling up your kernels to 31x31: Revisiting large kernel design in cnns",
+      "arxiv_id": "2203.06717"
+    },
+    "references": [
+      "Recent studies  [15, 52]  revisit the use of large-kernel convolutions, showing that one can enlarge the receptive field with a reasonable computational cost through depth-wise convolution  [35]",
+      "Specifically, we first exploit large-kernel depth-wise convolutions in the basic building block of the backbone and neck in the model, which improves the model's capability of capturing the global context  [15]"
+    ]
+  },
+  "b16": {
+    "details": {
+      "authors": [
+        "Alexey Dosovitskiy",
+        "Lucas Beyer",
+        "Alexander Kolesnikov",
+        "Dirk Weissenborn",
+        "Xiaohua Zhai",
+        "Thomas Unterthiner",
+        "Mostafa Dehghani",
+        "Matthias Minderer",
+        "Georg Heigold",
+        "Sylvain Gelly",
+        "Jakob Uszkoreit",
+        "Neil Houlsby"
+      ],
+      "title": "An image is worth 16x16 words: Transformers for image recognition at scale",
+      "year": "2021",
+      "venue": "ICLR. OpenReview.net",
+      "arxiv_id": null
+    },
+    "references": [
+      "To further stabilize the training, we adopt AdamW [55] as the optimizer, which is rarely used in convolutional object detectors but is a default for vision transformers  [16] ."
+    ]
+  },
+  "b17": {
+    "details": {
+      "authors": [
+        "Xianzhi Du",
+        "Tsung-Yi Lin",
+        "Pengchong Jin",
+        "Golnaz Ghiasi",
+        "Mingxing Tan",
+        "Yin Cui",
+        "Quoc V Le",
+        "Xiaodan Song"
+      ],
+      "title": "SpineNet: Learning scale-permuted backbone for recognition and localization",
+      "year": "2019",
+      "venue": "SpineNet: Learning scale-permuted backbone for recognition and localization",
+      "arxiv_id": "1912.05027"
+    },
+    "references": [
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]"
+    ]
+  },
+  "b18": {
+    "details": {
+      "authors": [
+        "Mark Everingham",
+        "Luc Van Gool",
+        "Christopher Williams",
+        "John Winn",
+        "Andrew Zisserman"
+      ],
+      "title": "The pascal visual object classes (voc) challenge",
+      "year": "2010-06",
+      "venue": "International Journal of Computer Vision",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b19": {
+    "details": {
+      "authors": [
+        "Chengjian Feng",
+        "Yujie Zhong",
+        "Yu Gao",
+        "Matthew R Scott",
+        "Weilin Huang"
+      ],
+      "title": "TOOD: task-aligned one-stage object detection",
+      "year": "2021",
+      "venue": "ICCV",
+      "arxiv_id": null
+    },
+    "references": [
+      "To train the one-stage object detector, the dense predictions from each scale will be matched with ground truth bounding boxes through different label assignment strategies  [19, 47, 70]",
+      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy",
+      "In addition to a better combination of data augmentations, optimization, and training schedules, we empirically find that existing dynamic label assignment strategies  [19, 21]  can be further improved by introducing soft targets instead of hard labels when matching ground truth boxes and model predictions"
+    ]
+  },
+  "b20": {
+    "details": {
+      "authors": [
+        "Zheng Ge",
+        "Songtao Liu",
+        "Zeming Li",
+        "Osamu Yoshie",
+        "Jian Sun"
+      ],
+      "title": "Ota: Optimal transport assignment for object detection",
+      "year": "2021",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy",
+      "Recent advances typically adopt dynamic label assignment strategies  [6, 20, 21]  that use cost functions consistent with the training loss as the matching criterion",
+      "For region cost C center , we use a soft center region cost instead of a fixed center prior  [20, 21, 95]  to stabilize the matching of the dynamic cost as below"
+    ]
+  },
+  "b21": {
+    "details": {
+      "authors": [
+        "Zheng Ge",
+        "Songtao Liu",
+        "Feng Wang",
+        "Zeming Li",
+        "Jian Sun"
+      ],
+      "title": "YOLOX: Exceeding YOLO series in 2021",
+      "year": "2009",
+      "venue": "YOLOX: Exceeding YOLO series in 2021",
+      "arxiv_id": "2107.08430"
+    },
+    "references": [
+      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy",
+      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
+      "1 , RTMDet achieves a better parameter-accuracy trade-off than previous methods and gains superior performance to previous models  [3, 21, 25, 65]",
+      "Following previous conventions, we use SimOTA  [21]  as our baseline and employ the Focal-Loss  [47]  and GIoU  [67] , which are the same as the training losses, as the cost matrix",
+      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
+      "Hence, we propose a dynamic soft label assignment strategy based on SimOTA  [21] , and its cost function is formulated as",
+      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
+      "In addition to a better combination of data augmentations, optimization, and training schedules, we empirically find that existing dynamic label assignment strategies  [19, 21]  can be further improved by introducing soft targets instead of hard labels when matching ground truth boxes and model predictions",
+      "To reduce the side effects of 'noisy' samples by strong data augmentations, YOLOX  [21]  explored a two-stage training strategy, where the first stage uses strong data augmentations, including Mosaic, MixUp, and random rotation and shear, and the second stage use weak data augmentations, such as random resizing and flipping",
+      "Recent advances of YOLO series  [3, 21]  typically adopt CSPDarkNet  [3]  as the backbone architecture, which contains four stages and each stage is stacked with several basic building blocks (Fig",
+      "Recent advances typically adopt dynamic label assignment strategies  [6, 20, 21]  that use cost functions consistent with the training loss as the matching criterion",
+      "For region cost C center , we use a soft center region cost instead of a fixed center prior  [20, 21, 95]  to stabilize the matching of the dynamic cost as below",
+      "Second, the generated training sample is 'noisy' and may not belong to the real distribution of the dataset, which affects the model learning  [21] ."
+    ]
+  },
+  "b22": {
+    "details": {
+      "authors": [
+        "Golnaz Ghiasi",
+        "Yin Cui",
+        "Aravind Srinivas",
+        "Rui Qian",
+        "Tsung-Yi Lin",
+        "Ekin Cubuk",
+        "Quoc Le",
+        "Barret Zoph",
+        "Google Research",
+        "Brain Team",
+        "Berkeley"
+      ],
+      "title": "Simple copy-paste is a strong data augmentation method for instance segmentation",
+      "year": "2022",
+      "venue": "Simple copy-paste is a strong data augmentation method for instance segmentation",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b23": {
+    "details": {
+      "authors": [
+        "Golnaz Ghiasi",
+        "Tsung-Yi Lin",
+        "V Quoc",
+        "Le"
+      ],
+      "title": "NAS-FPN: Learning scalable feature pyramid architecture for object detection",
+      "year": "2019",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]"
+    ]
+  },
+  "b24": {
+    "details": {
+      "authors": [
+        "Ross Girshick"
+      ],
+      "title": "Fast R-CNN",
+      "year": "2015",
+      "venue": "ICCV",
+      "arxiv_id": null
+    },
+    "references": [
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]"
+    ]
+  },
+  "b25": {
+    "details": {
+      "authors": [
+        "Jocher"
+      ],
+      "title": null,
+      "year": "2008",
+      "venue": null,
+      "arxiv_id": null
+    },
+    "references": [
+      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck",
+      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
+      "1 , RTMDet achieves a better parameter-accuracy trade-off than previous methods and gains superior performance to previous models  [3, 21, 25, 65]",
+      "This setting is consistent with previous studies  [25, 42, 71]  for a fair comparison",
+      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
+      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
+      "It is worth noting that both  [25]  and  [71]  use mask annotation to refine the bounding boxes after data augmentation, resulting in a gain of about 0.3% AP"
+    ]
+  },
+  "b26": {
+    "details": {
+      "authors": [
+        "Zonghao Guo",
+        "Chang Liu",
+        "Xiaosong Zhang",
+        "Jianbin Jiao",
+        "Xiangyang Ji",
+        "Qixiang Ye"
+      ],
+      "title": "Beyond bounding-box: Convexhull feature adaptation for oriented and densely packed object detection",
+      "year": "2021",
+      "venue": "2021 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)",
+      "arxiv_id": null
+    },
+    "references": [
+      "There are also various representations of rotated boxes explored (e.g., Gaussian distribution  [89, 90]  and convex set  [26, 44] ) to ease the rotated bounding box regression task"
+    ]
+  },
+  "b27": {
+    "details": {
+      "authors": [
+        "Zonghao Guo",
+        "Chang Liu",
+        "Xiaosong Zhang",
+        "Jianbin Jiao",
+        "Xiangyang Ji",
+        "Qixiang Ye"
+      ],
+      "title": "Beyond bounding-box: Convexhull feature adaptation for oriented and densely packed object detection",
+      "year": "2021",
+      "venue": "Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b28": {
+    "details": {
+      "authors": [
+        "Jiaming Han",
+        "Jian Ding",
+        "Jie Li",
+        "Gui-Song Xia"
+      ],
+      "title": "Align deep features for oriented object detection",
+      "year": "2021",
+      "venue": "IEEE Transactions on Geoscience and Remote Sensing",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b29": {
+    "details": {
+      "authors": [
+        "Jiaming Han",
+        "Jian Ding",
+        "Nan Xue",
+        "Gui-Song Xia"
+      ],
+      "title": "Redet: A rotation-equivariant detector for aerial object detection",
+      "year": "2021",
+      "venue": "Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition",
+      "arxiv_id": null
+    },
+    "references": [
+      "Based on an existing general object detector (e.g., RetinaNet  [47]  or Faster R-CNN  [66] ), different feature extraction networks are proposed to alleviate the feature misalignment  [28, 29, 88]  caused by object rotations",
+      "As shown in Table  A2 , RTMDet-R-l surpasses the previous best method ReDet  [29]  by 1.32% mAP."
+    ]
+  },
+  "b30": {
+    "details": {
+      "authors": [
+        "Kaiming He",
+        "Xinlei Chen",
+        "Saining Xie",
+        "Yanghao Li",
+        "Piotr Dollár",
+        "Ross Girshick"
+      ],
+      "title": "Masked autoencoders are scalable vision learners",
+      "year": "2022",
+      "venue": "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b31": {
+    "details": {
+      "authors": [
+        "Kaiming He",
+        "Georgia Gkioxari",
+        "Piotr Dollár",
+        "Ross B Girshick"
+      ],
+      "title": "Mask R-CNN",
+      "year": "2017",
+      "venue": "ICCV",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b32": {
+    "details": {
+      "authors": [
+        "Kaiming He",
+        "Xiangyu Zhang",
+        "Shaoqing Ren",
+        "Jian Sun"
+      ],
+      "title": "Deep residual learning for image recognition",
+      "year": "2016",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b33": {
+    "details": {
+      "authors": [
+        "Tong He",
+        "Zhi Zhang",
+        "Hang Zhang",
+        "Zhongyue Zhang",
+        "Junyuan Xie",
+        "Mu Li"
+      ],
+      "title": "Bag of tricks for image classification with convolutional neural networks",
+      "year": "2019",
+      "venue": "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition",
+      "arxiv_id": null
+    },
+    "references": [
+      "Furthermore, inhibiting weight decay on normalization layers and biases following previous practices  [33]  brings 0.9% AP improvement"
+    ]
+  },
+  "b34": {
+    "details": {
+      "authors": [
+        "Liping Hou",
+        "Ke Lu",
+        "Jian Xue",
+        "Yuqiu Li"
+      ],
+      "title": "Shape-adaptive selection and measurement for oriented object detection",
+      "year": "2022",
+      "venue": "Proceedings of the AAAI Conference on Artificial Intelligence",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b35": {
+    "details": {
+      "authors": [
+        "Andrew G Howard",
+        "Menglong Zhu",
+        "Bo Chen",
+        "Dmitry Kalenichenko",
+        "Weijun Wang",
+        "Tobias Weyand",
+        "Marco Andreetto",
+        "Hartwig Adam"
+      ],
+      "title": "Mobilenets: Efficient convolutional neural networks for mobile vision applications",
+      "year": "2017",
+      "venue": "Mobilenets: Efficient convolutional neural networks for mobile vision applications",
+      "arxiv_id": "1704.04861"
+    },
+    "references": [
+      "Recent studies  [15, 52]  revisit the use of large-kernel convolutions, showing that one can enlarge the receptive field with a reasonable computational cost through depth-wise convolution  [35]"
+    ]
+  },
+  "b36": {
+    "details": {
+      "authors": [
+        "Yiqi Jiang",
+        "Zhiyu Tan",
+        "Junyan Wang",
+        "Xiuyu Sun",
+        "Ming Lin",
+        "Hao Li"
+      ],
+      "title": "GiraffeDet: A heavy-neck paradigm for object detection",
+      "year": "2022",
+      "venue": "ICLR. OpenReview.net",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b37": {
+    "details": {
+      "authors": [
+        "Kang Kim",
+        "Hee Seok",
+        "Lee"
+      ],
+      "title": "Probabilistic anchor assignment with iou prediction for object detection",
+      "year": "2020",
+      "venue": "ECCV",
+      "arxiv_id": null
+    },
+    "references": [
+      "Later practices  [37, 70, 95, 98]  further explore different matching criteria such as object centers  [70, 98]"
+    ]
+  },
+  "b38": {
+    "details": {
+      "authors": [
+        "P Diederik",
+        "Jimmy Kingma",
+        "Ba"
+      ],
+      "title": "Adam: A method for stochastic optimization",
+      "year": "2015",
+      "venue": "ICLR",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b39": {
+    "details": {
+      "authors": [
+        "Alexander Kirillov",
+        "Evgeny Levinkov",
+        "Bjoern Andres",
+        "Bogdan Savchynskyy",
+        "Carsten Rother"
+      ],
+      "title": "Instancecut: from edges to instances with multicut",
+      "year": "2017",
+      "venue": "cvpr",
+      "arxiv_id": null
+    },
+    "references": [
+      "Pioneer methods explore different paradigms to tackle this task, including mask classification  [60, 61] , 'Top-Down  ' [8, 31] , and 'Bottom-Up' approaches  [1, 39, 58]"
+    ]
+  },
+  "b40": {
+    "details": {
+      "authors": [
+        "Steven Lang",
+        "Fabrizio Ventola",
+        "Kristian Kersting"
+      ],
+      "title": "Dafne: A one-stage anchor-free deep model for oriented object detection",
+      "year": "2021",
+      "venue": "Dafne: A one-stage anchor-free deep model for oriented object detection",
+      "arxiv_id": "2109.06148"
+    },
+    "references": []
+  },
+  "b41": {
+    "details": {
+      "authors": [
+        "Youngwan Lee",
+        "Sangrok Joong Won Hwang",
+        "Yuseok Lee",
+        "Jongyoul Bae",
+        "Park"
+      ],
+      "title": "An energy and gpu-computation efficient backbone network for real-time object detection. computer vision and pattern recognition",
+      "year": "2019",
+      "venue": "An energy and gpu-computation efficient backbone network for real-time object detection. computer vision and pattern recognition",
+      "arxiv_id": null
+    },
+    "references": [
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]"
+    ]
+  },
+  "b42": {
+    "details": {
+      "authors": [
+        "Chuyi Li",
+        "Lulu Li",
+        "Hongliang Jiang",
+        "Kaiheng Weng",
+        "Yifei Geng",
+        "Liang Li",
+        "Zaidan Ke",
+        "Qingyuan Li",
+        "Meng Cheng",
+        "Weiqiang Nie",
+        "Yiduo Li",
+        "Bo Zhang",
+        "Yufei Liang",
+        "Linyuan Zhou",
+        "Xiaoming Xu",
+        "Xiangxiang Chu",
+        "Xiaoming Wei",
+        "Xiaolin Wei"
+      ],
+      "title": "Yolov6: A single-stage object detection framework for industrial applications",
+      "year": "2007",
+      "venue": "Yolov6: A single-stage object detection framework for industrial applications",
+      "arxiv_id": "2209.02976"
+    },
+    "references": [
+      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck",
+      "It also increases the error gap after the model is quantized to lower bits, requiring compensation through re-parameterizing optimizer [13] and quantizationaware training  [42]",
+      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
+      "The overall modification of the model architectures allows the fast inference speed of RTMDet without relying on model re-parameterizations  [42, 71, 84] .",
+      "This setting is consistent with previous studies  [25, 42, 71]  for a fair comparison",
+      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
+      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
+      "Recent advances also explore model re-parameterization  [14, 42, 71, 84]  to improve the inference speed after model deployment",
+      "It is noteworthy that some recent real-time object detectors  [42, 71, 84]  explore re-parameterized 3×3 convolutions  [14]  in the basic building block (Fig"
+    ]
+  },
+  "b43": {
+    "details": {
+      "authors": [
+        "Chengzheng Li",
+        "Chunyan Xu",
+        "Zhen Cui",
+        "Dan Wang",
+        "Zequn Jie",
+        "Tong Zhang",
+        "Jian Yang"
+      ],
+      "title": "Learning object-wise semantic representation for detection in remote sensing imagery",
+      "year": "2019-06",
+      "venue": "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b44": {
+    "details": {
+      "authors": [
+        "Wentong Li",
+        "Yijie Chen",
+        "Kaixuan Hu",
+        "Jianke Zhu"
+      ],
+      "title": "Oriented reppoints for aerial object detection",
+      "year": "2022",
+      "venue": "2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)",
+      "arxiv_id": null
+    },
+    "references": [
+      "There are also various representations of rotated boxes explored (e.g., Gaussian distribution  [89, 90]  and convex set  [26, 44] ) to ease the rotated bounding box regression task"
+    ]
+  },
+  "b45": {
+    "details": {
+      "authors": [
+        "Xiang Li",
+        "Chengqi Lv",
+        "Wenhai Wang",
+        "Gang Li",
+        "Lingfeng Yang",
+        "Jian Yang"
+      ],
+      "title": "Generalized focal loss: Towards efficient representation learning for dense object detection",
+      "year": "2022",
+      "venue": "IEEE Transactions on Pattern Analysis and Machine Intelligence",
+      "arxiv_id": null
+    },
+    "references": [
+      "The modification is inspired by GFL  [45]  that uses the IoU between the predictions and ground truth boxes as the soft label Y sof t to train the classification branch"
+    ]
+  },
+  "b46": {
+    "details": {
+      "authors": [
+        "Tsung-Yi Lin",
+        "Piotr Dollár",
+        "Ross B Girshick",
+        "Kaiming He",
+        "Bharath Hariharan",
+        "Serge J Belongie"
+      ],
+      "title": "Feature pyramid networks for object detection",
+      "year": "2017",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "The neck takes the multiscale feature pyramid from the backbone and uses the same basic building blocks as the backbone with bottom-up and top-down feature propogation  [46, 49]  to enhance the pyramid feature map",
+      "To evaluate the superiority of our label assignment strategy and loss, we first compare RTMDet-Ins with conventional methods using the standard ResNet50-FPN  [46]  backbone and the classic multi-scale 3x schedule  [9, 80]",
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]"
+    ]
+  },
+  "b47": {
+    "details": {
+      "authors": [
+        "Tsung-Yi Lin",
+        "Priya Goyal",
+        "Ross B Girshick",
+        "Kaiming He",
+        "Piotr Dollár"
+      ],
+      "title": "Focal loss for dense object detection",
+      "year": "2017",
+      "venue": "ICCV",
+      "arxiv_id": null
+    },
+    "references": [
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]",
+      "To train the one-stage object detector, the dense predictions from each scale will be matched with ground truth bounding boxes through different label assignment strategies  [19, 47, 70]",
+      "Based on an existing general object detector (e.g., RetinaNet  [47]  or Faster R-CNN  [66] ), different feature extraction networks are proposed to alleviate the feature misalignment  [28, 29, 88]  caused by object rotations",
+      "Following previous conventions, we use SimOTA  [21]  as our baseline and employ the Focal-Loss  [47]  and GIoU  [67] , which are the same as the training losses, as the cost matrix",
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]"
+    ]
+  },
+  "b48": {
+    "details": {
+      "authors": [
+        "Tsung-Yi Lin",
+        "Michael Maire",
+        "Serge Belongie",
+        "James Hays",
+        "Pietro Perona",
+        "Deva Ramanan",
+        "Piotr Dollár",
+        "C Lawrence",
+        "Zitnick"
+      ],
+      "title": "Microsoft COCO: Common objects in context",
+      "year": "2014",
+      "venue": "ECCV",
+      "arxiv_id": null
+    },
+    "references": [
+      "We evaluate the model performance on object detection and instance segmentation by bbox AP and mask AP  [48] , respectively.",
+      "Orthogonal to these methods, this paper only extends a general object detector with minimal modifications (i.e., adding an angle prediction branch and replacing the GIoU  [67]  loss by Rotated IoU Loss  [97] ) and reveals that a high-precision general object detector paves the way for high-precision rotated object detection through the model architecture and the knowledge learned on general detection dataset  [48] .",
+      "We also observe that the pre-training on general object detection datasets  [48]  is beneficial for rotated object detection in aerial scenarios  [81] .",
+      "We conduct experiments on COCO dataset  [48] , which contains about 118K images in the train2017 set and 5K images in the val2017 set for training and validation, respectively"
+    ]
+  },
+  "b49": {
+    "details": {
+      "authors": [
+        "Shu Liu",
+        "Lu Qi",
+        "Haifang Qin",
+        "Jianping Shi",
+        "Jiaya Jia"
+      ],
+      "title": "Path aggregation network for instance segmentation. computer vision and pattern recognition",
+      "year": "2018",
+      "venue": "Path aggregation network for instance segmentation. computer vision and pattern recognition",
+      "arxiv_id": null
+    },
+    "references": [
+      "The neck takes the multiscale feature pyramid from the backbone and uses the same basic building blocks as the backbone with bottom-up and top-down feature propogation  [46, 49]  to enhance the pyramid feature map",
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]"
+    ]
+  },
+  "b50": {
+    "details": {
+      "authors": [
+        "Wei Liu",
+        "Dragomir Anguelov",
+        "Dumitru Erhan",
+        "Christian Szegedy",
+        "Scott E Reed",
+        "Cheng-Yang Fu",
+        "Alexander C Berg"
+      ],
+      "title": "SSD: single shot multibox detector",
+      "year": "2016",
+      "venue": "ECCV",
+      "arxiv_id": null
+    },
+    "references": [
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]"
+    ]
+  },
+  "b51": {
+    "details": {
+      "authors": [
+        "Ze Liu",
+        "Yutong Lin",
+        "Yue Cao",
+        "Han Hu",
+        "Yixuan Wei",
+        "Zheng Zhang",
+        "Stephen Lin",
+        "Baining Guo"
+      ],
+      "title": "Swin Transformer: Hierarchical vision transformer using shifted windows",
+      "year": "2021",
+      "venue": "ICCV",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b52": {
+    "details": {
+      "authors": [
+        "Zhuang Liu",
+        "Hanzi Mao",
+        "Chao-Yuan Wu",
+        "Christoph Feichtenhofer",
+        "Trevor Darrell",
+        "Saining Xie"
+      ],
+      "title": "A convnet for the 2020s",
+      "year": "2022",
+      "venue": "A convnet for the 2020s",
+      "arxiv_id": "2201.03545"
+    },
+    "references": [
+      "Recent studies  [15, 52]  revisit the use of large-kernel convolutions, showing that one can enlarge the receptive field with a reasonable computational cost through depth-wise convolution  [35]"
+    ]
+  },
+  "b53": {
+    "details": {
+      "authors": [
+        "Zikun Liu",
+        "Hongzhen Wang",
+        "Lubin Weng",
+        "Yiping Yang"
+      ],
+      "title": "Ship rotated bounding box space for ship extraction from high-resolution optical satellite images with complex backgrounds",
+      "year": "2016",
+      "venue": "IEEE Geoscience and Remote Sensing Letters",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b54": {
+    "details": {
+      "authors": [
+        "Yang Long",
+        "Gui-Song Xia",
+        "Shengyang Li",
+        "Wen Yang",
+        "Michael Ying Yang",
+        "Xiao Xiang Zhu",
+        "Liangpei Zhang",
+        "Deren Li"
+      ],
+      "title": "On creating benchmark dataset for aerial image interpretation: Reviews, guidances, and million-aid",
+      "year": "2021",
+      "venue": "IEEE Journal of selected topics in applied earth observations and remote sensing",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b55": {
+    "details": {
+      "authors": [
+        "Ilya Loshchilov",
+        "Frank Hutter"
+      ],
+      "title": "Decoupled weight decay regularization",
+      "year": "2019",
+      "venue": "ICLR. OpenReview.net",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b56": {
+    "details": {
+      "authors": [
+        "Wenjie Luo",
+        "Yujia Li",
+        "Raquel Urtasun",
+        "Richard S Zemel"
+      ],
+      "title": "Understanding the effective receptive field in deep convolutional neural networks",
+      "year": "2016",
+      "venue": "NeurIPS",
+      "arxiv_id": null
+    },
+    "references": [
+      "A large effective receptive field in the backbone is beneficial for dense prediction tasks like object detection and segmentation as it helps to capture and model the image context  [56]  more comprehensively"
+    ]
+  },
+  "b57": {
+    "details": {
+      "authors": [
+        "Fausto Milletari",
+        "Nassir Navab",
+        "Seyed-Ahmad Ahmadi"
+      ],
+      "title": "V-net: Fully convolutional neural networks for volumetric medical image segmentation",
+      "year": "2016",
+      "venue": "2016 fourth international conference on 3D vision (3DV)",
+      "arxiv_id": null
+    },
+    "references": [
+      "We use dice loss  [57]  as the supervision for the instance masks following typical conventions."
+    ]
+  },
+  "b58": {
+    "details": {
+      "authors": [
+        "Davy Neven",
+        "Bert De Brabandere",
+        "Marc Proesmans",
+        "Luc Van Gool"
+      ],
+      "title": "Instance segmentation by jointly optimizing spatial embeddings and clustering bandwidth",
+      "year": "2019",
+      "venue": "cvpr",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b59": {
+    "details": {
+      "authors": [
+        "Jiangmiao Pang",
+        "Kai Chen",
+        "Jianping Shi",
+        "Huajun Feng",
+        "Wanli Ouyang",
+        "Dahua Lin"
+      ],
+      "title": "Libra R-CNN: Towards balanced learning for object detection",
+      "year": "2019",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]"
+    ]
+  },
+  "b60": {
+    "details": {
+      "authors": [
+        "Pedro O Pinheiro",
+        "Ronan Collobert",
+        "Piotr Dollár"
+      ],
+      "title": "Learning to segment object candidates",
+      "year": "2015",
+      "venue": "Learning to segment object candidates",
+      "arxiv_id": null
+    },
+    "references": [
+      "Pioneer methods explore different paradigms to tackle this task, including mask classification  [60, 61] , 'Top-Down  ' [8, 31] , and 'Bottom-Up' approaches  [1, 39, 58]"
+    ]
+  },
+  "b61": {
+    "details": {
+      "authors": [
+        "Pedro O Pinheiro",
+        "Tsung-Yi Lin",
+        "Ronan Collobert",
+        "Piotr Dollár"
+      ],
+      "title": "Learning to refine object segments",
+      "year": "2016",
+      "venue": "ECCV",
+      "arxiv_id": null
+    },
+    "references": [
+      "Pioneer methods explore different paradigms to tackle this task, including mask classification  [60, 61] , 'Top-Down  ' [8, 31] , and 'Bottom-Up' approaches  [1, 39, 58]"
+    ]
+  },
+  "b62": {
+    "details": {
+      "authors": [
+        "Rangilyu"
+      ],
+      "title": "NanoDet-Plus: Super fast and high accuracy lightweight anchor-free object detection model",
+      "year": "2021",
+      "venue": "NanoDet-Plus: Super fast and high accuracy lightweight anchor-free object detection model",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b63": {
+    "details": {
+      "authors": [
+        "Joseph Redmon",
+        "Santosh Kumar Divvala",
+        "Ross B Girshick",
+        "Ali Farhadi"
+      ],
+      "title": "You only look once: Unified, real-time object detection",
+      "year": "2016",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously."
+    ]
+  },
+  "b64": {
+    "details": {
+      "authors": [
+        "Joseph Redmon",
+        "Ali Farhadi"
+      ],
+      "title": "YOLO9000: Better, faster, stronger",
+      "year": "2017",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]"
+    ]
+  },
+  "b65": {
+    "details": {
+      "authors": [
+        "Joseph Redmon",
+        "Ali Farhadi"
+      ],
+      "title": "YOLOv3: An incremental improvement",
+      "year": "2018",
+      "venue": "YOLOv3: An incremental improvement",
+      "arxiv_id": "1804.02767"
+    },
+    "references": [
+      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
+      "1 , RTMDet achieves a better parameter-accuracy trade-off than previous methods and gains superior performance to previous models  [3, 21, 25, 65]",
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]"
+    ]
+  },
+  "b66": {
+    "details": {
+      "authors": [
+        "Kaiming Shaoqing Ren",
+        "Ross He",
+        "Jian Girshick",
+        "Sun"
+      ],
+      "title": "Faster R-CNN: Towards real-time object detection with region proposal networks",
+      "year": "2015",
+      "venue": "NeurIPS",
+      "arxiv_id": null
+    },
+    "references": [
+      "Based on an existing general object detector (e.g., RetinaNet  [47]  or Faster R-CNN  [66] ), different feature extraction networks are proposed to alleviate the feature misalignment  [28, 29, 88]  caused by object rotations",
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]"
+    ]
+  },
+  "b67": {
+    "details": {
+      "authors": [
+        "Hamid Rezatofighi",
+        "Nathan Tsoi",
+        "Junyoung Gwak",
+        "Amir Sadeghian",
+        "Ian Reid",
+        "Silvio Savarese"
+      ],
+      "title": "Generalized intersection over union: A metric and a loss for bounding box regression",
+      "year": "2019",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "Orthogonal to these methods, this paper only extends a general object detector with minimal modifications (i.e., adding an angle prediction branch and replacing the GIoU  [67]  loss by Rotated IoU Loss  [97] ) and reveals that a high-precision general object detector paves the way for high-precision rotated object detection through the model architecture and the knowledge learned on general detection dataset  [48] .",
+      "When using Generalized IoU  [67]  as regression cost, the maximum difference between the best match and the worst match is less than 1",
+      "Following previous conventions, we use SimOTA  [21]  as our baseline and employ the Focal-Loss  [47]  and GIoU  [67] , which are the same as the training losses, as the cost matrix"
+    ]
+  },
+  "b68": {
+    "details": {
+      "authors": [
+        "Mingxing Tan",
+        "Ruoming Pang",
+        "V Quoc",
+        "Le"
+      ],
+      "title": "EfficientDet: Scalable and efficient object detection",
+      "year": "2020",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "To enhance the multi-scale features, previous approaches either use a larger backbone with more parameters or use a heavier neck  [36, 68]  with more connections and fusions among feature pyramid",
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]"
+    ]
+  },
+  "b69": {
+    "details": {
+      "authors": [
+        "Chunhua Zhi Tian",
+        "Hao Shen",
+        "Chen"
+      ],
+      "title": "Conditional convolutions for instance segmentation",
+      "year": "2020",
+      "venue": "European conference on computer vision",
+      "arxiv_id": null
+    },
+    "references": [
+      "As illustrated in Figure  4 , based on RT-MDet, an additional branch is added, consisting of a kernel prediction head and a mask feature head, similar to CondInst  [69]",
+      "By simply adding a kernel and a mask feature generation head  [11, 69] , RTMDet can perform instance segmentation with only around 10% additional parameters",
+      "Such an architecture generally applies to general and rotated objects, and can be extended for instance segmentation by the kernel and mask feature generation heads  [69] .",
+      "A representative of these attempts is based on dynamic kernels  [69, 77, 96] , which learn to generate dynamic kernels from either learned We use CSP-blocks  [72]  with large kernel depth-wise convolution layers to build the backbone",
+      "We adopt an auxiliary semantic segmentation head for faster convergence speed and a fair comparison with CondInst  [69]",
+      "parameters  [96]  or dense feature maps  [69, 77]  and use them to conduct convolution with mask feature maps",
+      "Inspired by these works, we extend RTMDet by kernel prediction and mask feature heads  [69]  to conduct instance segmentation.",
+      "Recent attempts perform instance segmentation in one stage with  [4, 69]  or without bounding boxes  [76, 77, 96]"
+    ]
+  },
+  "b70": {
+    "details": {
+      "authors": [
+        "Chunhua Zhi Tian",
+        "Hao Shen",
+        "Tong Chen",
+        "He"
+      ],
+      "title": "FCOS: Fully convolutional one-stage object detection",
+      "year": "2019",
+      "venue": "FCOS: Fully convolutional one-stage object detection",
+      "arxiv_id": "1904.01355"
+    },
+    "references": [
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
+      "To train the one-stage object detector, the dense predictions from each scale will be matched with ground truth bounding boxes through different label assignment strategies  [19, 47, 70]",
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]"
+    ]
+  },
+  "b71": {
+    "details": {
+      "authors": [
+        "Chien-Yao Wang",
+        "Alexey Bochkovskiy",
+        "Hong-Yuan Mark Liao"
+      ],
+      "title": "Yolov7: Trainable bag-of-freebies sets new state-of-the-art for real-time object detectors",
+      "year": "2007",
+      "venue": "Yolov7: Trainable bag-of-freebies sets new state-of-the-art for real-time object detectors",
+      "arxiv_id": "2207.02696"
+    },
+    "references": [
+      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
+      "The overall modification of the model architectures allows the fast inference speed of RTMDet without relying on model re-parameterizations  [42, 71, 84] .",
+      "This setting is consistent with previous studies  [25, 42, 71]  for a fair comparison",
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]",
+      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
+      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
+      "Recent advances also explore model re-parameterization  [14, 42, 71, 84]  to improve the inference speed after model deployment",
+      "It is worth noting that both  [25]  and  [71]  use mask annotation to refine the bounding boxes after data augmentation, resulting in a gain of about 0.3% AP",
+      "It is noteworthy that some recent real-time object detectors  [42, 71, 84]  explore re-parameterized 3×3 convolutions  [14]  in the basic building block (Fig"
+    ]
+  },
+  "b72": {
+    "details": {
+      "authors": [
+        "Chien-Yao Wang",
+        "Hong-Yuan Mark Liao",
+        "I-Hau Yeh",
+        "Yueh-Hua Wu",
+        "Ping-Yang Chen",
+        "Jun-Wei Hsieh"
+      ],
+      "title": "Cspnet: A new backbone that can enhance learning capability of cnn",
+      "year": "2019",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "A representative of these attempts is based on dynamic kernels  [69, 77, 96] , which learn to generate dynamic kernels from either learned We use CSP-blocks  [72]  with large kernel depth-wise convolution layers to build the backbone"
+    ]
+  },
+  "b73": {
+    "details": {
+      "authors": [
+        "Di Wang",
+        "Qiming Zhang",
+        "Yufei Xu",
+        "Jing Zhang",
+        "Bo Du",
+        "Dacheng Tao",
+        "Liangpei Zhang"
+      ],
+      "title": "Advancing plain vision transformer towards remote sensing foundation model",
+      "year": "2022",
+      "venue": "IEEE Transactions on Geoscience and Remote Sensing",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b74": {
+    "details": {
+      "authors": [
+        "Ning Wang",
+        "Yang Gao",
+        "Hao Chen",
+        "Peng Wang",
+        "Zhi Tian",
+        "Chunhua Shen"
+      ],
+      "title": "NAS-FCOS: fast neural architecture search for object detection",
+      "year": "2019",
+      "venue": "NAS-FCOS: fast neural architecture search for object detection",
+      "arxiv_id": "1906.04423"
+    },
+    "references": []
+  },
+  "b75": {
+    "details": {
+      "authors": [
+        "Xiaolong Wang",
+        "Ross Girshick",
+        "Abhinav Gupta",
+        "Kaiming He"
+      ],
+      "title": "Non-local neural networks",
+      "year": "2018",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b76": {
+    "details": {
+      "authors": [
+        "Xinlong Wang",
+        "Tao Kong",
+        "Chunhua Shen",
+        "Yuning Jiang",
+        "Lei Li"
+      ],
+      "title": "SOLO: Segmenting objects by locations",
+      "year": "2020",
+      "venue": "eccv",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b77": {
+    "details": {
+      "authors": [
+        "Xinlong Wang",
+        "Rufeng Zhang",
+        "Tao Kong",
+        "Lei Li",
+        "Chunhua Shen"
+      ],
+      "title": "SOLOv2: Dynamic, faster and stronger",
+      "year": "2020",
+      "venue": "NeurIPS",
+      "arxiv_id": null
+    },
+    "references": [
+      "parameters  [96]  or dense feature maps  [69, 77]  and use them to conduct convolution with mask feature maps",
+      "Recent attempts perform instance segmentation in one stage with  [4, 69]  or without bounding boxes  [76, 77, 96]"
+    ]
+  },
+  "b78": {
+    "details": {
+      "authors": [
+        "Ross Wightman",
+        "Hugo Touvron",
+        "Hervé Jégou"
+      ],
+      "title": "Resnet strikes back: An improved training procedure in timm",
+      "year": "2021",
+      "venue": "arXiv: Computer Vision and Pattern Recognition",
+      "arxiv_id": null
+    },
+    "references": [
+      "Finally, applying a pre-trained ImageNet backbone through the RSB  [78]  training strategy leads to a further 0.3% increase in AP"
+    ]
+  },
+  "b79": {
+    "details": {
+      "authors": [
+        "Yuxin Wu",
+        "Kaiming He"
+      ],
+      "title": "Group normalization",
+      "year": "2018",
+      "venue": "ECCV",
+      "arxiv_id": null
+    },
+    "references": [
+      "BN is also more efficient than other normalization layers such as Group Normalization  [79]  because in inference it directly uses the statistics calculated in training."
+    ]
+  },
+  "b80": {
+    "details": {
+      "authors": [
+        "Yuxin Wu",
+        "Alexander Kirillov",
+        "Francisco Massa",
+        "Wan-Yen Lo",
+        "Ross Girshick"
+      ],
+      "title": "Detectron2",
+      "year": "2019",
+      "venue": "Detectron2",
+      "arxiv_id": null
+    },
+    "references": [
+      "To evaluate the superiority of our label assignment strategy and loss, we first compare RTMDet-Ins with conventional methods using the standard ResNet50-FPN  [46]  backbone and the classic multi-scale 3x schedule  [9, 80]"
+    ]
+  },
+  "b81": {
+    "details": {
+      "authors": [
+        "Gui-Song Xia",
+        "Xiang Bai",
+        "Jian Ding",
+        "Zhen Zhu",
+        "Serge Belongie",
+        "Jiebo Luo",
+        "Mihai Datcu",
+        "Marcello Pelillo",
+        "Liangpei Zhang"
+      ],
+      "title": "Dota: A large-scale dataset for object detection in aerial images",
+      "year": "2018",
+      "venue": "Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition",
+      "arxiv_id": null
+    },
+    "references": [
+      "We conduct experiments on DOTA dataset  [81]  which contains 2.8K aerial images and 188K instances obtained from different sensors with multiple resolutions",
+      "We also observe that the pre-training on general object detection datasets  [48]  is beneficial for rotated object detection in aerial scenarios  [81] ."
+    ]
+  },
+  "b82": {
+    "details": {
+      "authors": [
+        "Saining Xie",
+        "Ross Girshick",
+        "Piotr Dollar",
+        "Zhuowen Tu",
+        "Kaiming He"
+      ],
+      "title": "Aggregated residual transformations for deep neural networks",
+      "year": "2017",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b83": {
+    "details": {
+      "authors": [
+        "Xingxing Xie",
+        "Gong Cheng",
+        "Jiabao Wang",
+        "Xiwen Yao",
+        "Junwei Han"
+      ],
+      "title": "Oriented r-cnn for object detection",
+      "year": "2021",
+      "venue": "Proceedings of the IEEE International Conference on Computer Vision",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b84": {
+    "details": {
+      "authors": [
+        "Shangliang Xu",
+        "Xinxin Wang",
+        "Wenyu Lv",
+        "Qinyao Chang",
+        "Cheng Cui",
+        "Kaipeng Deng",
+        "Guanzhong Wang",
+        "Qingqing Dang",
+        "Shengyu Wei",
+        "Yuning Du",
+        "Baohua Lai"
+      ],
+      "title": "PP-YOLOE: An evolved version of YOLO",
+      "year": "2008",
+      "venue": "PP-YOLOE: An evolved version of YOLO",
+      "arxiv_id": "2203.16250"
+    },
+    "references": [
+      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck",
+      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
+      "The overall modification of the model architectures allows the fast inference speed of RTMDet without relying on model re-parameterizations  [42, 71, 84] .",
+      "Recent advances also explore model re-parameterization  [14, 42, 71, 84]  to improve the inference speed after model deployment",
+      "It is noteworthy that some recent real-time object detectors  [42, 71, 84]  explore re-parameterized 3×3 convolutions  [14]  in the basic building block (Fig"
+    ]
+  },
+  "b85": {
+    "details": {
+      "authors": [
+        "Yongchao Xu",
+        "Mingtao Fu",
+        "Qimeng Wang",
+        "Yukang Wang",
+        "Kai Chen",
+        "Gui-Song Xia",
+        "Xiang Bai"
+      ],
+      "title": "Gliding vertex on the horizontal bounding box for multi-oriented object detection",
+      "year": "2020",
+      "venue": "IEEE Transactions on Pattern Analysis and Machine Intelligence",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b86": {
+    "details": {
+      "authors": [
+        "Xue Yang",
+        "Liping Hou",
+        "Yue Zhou",
+        "Wentao Wang",
+        "Junchi Yan"
+      ],
+      "title": "Dense label encoding for boundary discontinuity free rotation detection",
+      "year": "2021",
+      "venue": "Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b87": {
+    "details": {
+      "authors": [
+        "Xue Yang",
+        "Junchi Yan"
+      ],
+      "title": "Arbitrary-oriented object detection with circular smooth label",
+      "year": "2020",
+      "venue": "European Conference on Computer Vision",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b88": {
+    "details": {
+      "authors": [
+        "Xue Yang",
+        "Junchi Yan",
+        "Ziming Feng",
+        "Tao He"
+      ],
+      "title": "R3det: Refined single-stage detector with feature refinement for rotating object",
+      "year": "2021",
+      "venue": "Proceedings of the AAAI Conference on Artificial Intelligence",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b89": {
+    "details": {
+      "authors": [
+        "Xue Yang",
+        "Junchi Yan",
+        "Qi Ming",
+        "Wentao Wang",
+        "Xiaopeng Zhang",
+        "Qi Tian"
+      ],
+      "title": "Rethinking rotated object detection with gaussian wasserstein distance loss",
+      "year": "2021",
+      "venue": "International Conference on Machine Learning",
+      "arxiv_id": null
+    },
+    "references": [
+      "There are also various representations of rotated boxes explored (e.g., Gaussian distribution  [89, 90]  and convex set  [26, 44] ) to ease the rotated bounding box regression task"
+    ]
+  },
+  "b90": {
+    "details": {
+      "authors": [
+        "Xue Yang",
+        "Xiaojiang Yang",
+        "Jirui Yang",
+        "Qi Ming",
+        "Wentao Wang",
+        "Qi Tian",
+        "Junchi Yan"
+      ],
+      "title": "Learning high-precision bounding box for rotated object detection via kullbackleibler divergence",
+      "year": "2021",
+      "venue": "Advances in Neural Information Processing Systems",
+      "arxiv_id": null
+    },
+    "references": [
+      "There are also various representations of rotated boxes explored (e.g., Gaussian distribution  [89, 90]  and convex set  [26, 44] ) to ease the rotated bounding box regression task"
+    ]
+  },
+  "b91": {
+    "details": {
+      "authors": [
+        "Xue Yang",
+        "Yue Zhou",
+        "Gefan Zhang",
+        "Jitui Yang",
+        "Wentao Wang",
+        "Junchi Yan",
+        "Xiaopeng Zhang",
+        "Qi Tian"
+      ],
+      "title": "The kfiou loss for rotated object detection",
+      "year": "2022",
+      "venue": "The kfiou loss for rotated object detection",
+      "arxiv_id": "2201.12558"
+    },
+    "references": []
+  },
+  "b92": {
+    "details": {
+      "authors": [
+        "Fisher Yu",
+        "Vladlen Koltun",
+        "Thomas A Funkhouser"
+      ],
+      "title": "Dilated residual networks",
+      "year": "2017",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b93": {
+    "details": {
+      "authors": [
+        "Sangdoo Yun",
+        "Dongyoon Han",
+        "Seong Joon Oh",
+        "Sanghyuk Chun",
+        "Junsuk Choe",
+        "Youngjoon Yoo"
+      ],
+      "title": "Cutmix: Regularization strategy to train strong classifiers with localizable features",
+      "year": "2019",
+      "venue": "ICCV",
+      "arxiv_id": null
+    },
+    "references": [
+      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]"
+    ]
+  },
+  "b94": {
+    "details": {
+      "authors": [
+        "Hongyi Zhang",
+        "Moustapha Cissé",
+        "Yann N Dauphin",
+        "David Lopez-Paz"
+      ],
+      "title": "mixup: Beyond empirical risk minimization",
+      "year": "2018",
+      "venue": "ICLR",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b95": {
+    "details": {
+      "authors": [
+        "Shifeng Zhang",
+        "Cheng Chi",
+        "Yongqiang Yao",
+        "Zhen Lei",
+        "Stan Z Li"
+      ],
+      "title": "Bridging the gap between anchor-based and anchor-free detection via adaptive training sample selection",
+      "year": "2020",
+      "venue": "CVPR",
+      "arxiv_id": null
+    },
+    "references": [
+      "Later practices  [37, 70, 95, 98]  further explore different matching criteria such as object centers  [70, 98]",
+      "For region cost C center , we use a soft center region cost instead of a fixed center prior  [20, 21, 95]  to stabilize the matching of the dynamic cost as below"
+    ]
+  },
+  "b96": {
+    "details": {
+      "authors": [
+        "Wenwei Zhang",
+        "Jiangmiao Pang",
+        "Kai Chen",
+        "Chen Change Loy"
+      ],
+      "title": "K-Net: Towards unified image segmentation",
+      "year": "2021",
+      "venue": "NeurIPS",
+      "arxiv_id": null
+    },
+    "references": [
+      "parameters  [96]  or dense feature maps  [69, 77]  and use them to conduct convolution with mask feature maps",
+      "Recent attempts perform instance segmentation in one stage with  [4, 69]  or without bounding boxes  [76, 77, 96]"
+    ]
+  },
+  "b97": {
+    "details": {
+      "authors": [
+        "Dingfu Zhou",
+        "Jin Fang",
+        "Xibin Song",
+        "Chenye Guan",
+        "Junbo Yin",
+        "Yuchao Dai",
+        "Ruigang Yang"
+      ],
+      "title": "Iou loss for 2d/3d object detection",
+      "year": "2019",
+      "venue": "2019 International Conference on 3D Vision (3DV)",
+      "arxiv_id": null
+    },
+    "references": [
+      "Orthogonal to these methods, this paper only extends a general object detector with minimal modifications (i.e., adding an angle prediction branch and replacing the GIoU  [67]  loss by Rotated IoU Loss  [97] ) and reveals that a high-precision general object detector paves the way for high-precision rotated object detection through the model architecture and the knowledge learned on general detection dataset  [48] ."
+    ]
+  },
+  "b98": {
+    "details": {
+      "authors": [
+        "Xingyi Zhou",
+        "Dequan Wang",
+        "Philipp Krähenbühl"
+      ],
+      "title": "Objects as points",
+      "year": "2019",
+      "venue": "arXiv: Computer Vision and Pattern Recognition",
+      "arxiv_id": null
+    },
+    "references": []
+  },
+  "b99": {
+    "details": {
+      "authors": [
+        "Yue Zhou",
+        "Xue Yang",
+        "Gefan Zhang",
+        "Jiabao Wang",
+        "Yanyi Liu",
+        "Liping Hou",
+        "Xue Jiang",
+        "Xingzhao Liu",
+        "Junchi Yan",
+        "Chengqi Lyu",
+        "Wenwei Zhang",
+        "Kai Chen"
+      ],
+      "title": "Mmrotate: A rotated object detection benchmark using pytorch",
+      "year": "2022",
+      "venue": "Proceedings of the 30th ACM International Conference on Multimedia",
+      "arxiv_id": null
+    },
+    "references": [
+      "Code and models of RTMDet-R are released at MMRotate  [99] ."
+    ]
+  }
+}

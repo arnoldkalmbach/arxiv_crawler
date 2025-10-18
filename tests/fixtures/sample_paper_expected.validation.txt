@@ -1,0 +1,346 @@
+
+================================================================================
+📋 ARXIV ID VALIDATION REPORT
+================================================================================
+
+📊 SUMMARY
+--------------------------------------------------------------------------------
+✅ Valid IDs:   17/17 (100.0%)
+
+📈 Metadata Quality:
+   • Title similarity ≥80%: 16/17 (94.1%)
+   • Author overlap:        15/17 (88.2%)
+   • Year match:            11/16 (68.8%)
+
+================================================================================
+✅ DETAILED VALIDATION RESULTS (All Valid IDs)
+================================================================================
+
+1. Citation b1: arXiv:1902.05509
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | 📅 Year matches
+   Scores:  Title=1.00 | Authors=5 | Year=True
+
+   📄 Title:
+      Extracted: Multigrain: a unified image embedding for classes and instances
+      API:       MultiGrain: a unified image embedding for classes and instances
+
+   👥 Authors:
+      Extracted (5): Maxim Berman, Hervé Jégou, Andrea Vedaldi, Iasonas Kokkinos, Matthijs Douze
+      API (5):       Maxim Berman, Hervé Jégou, Andrea Vedaldi, Iasonas Kokkinos, Matthijs Douze
+
+   📅 Year & Venue:
+      Extracted: 2019 | Venue: Multigrain: a unified image embedding for classes and instances
+      API:       2019
+
+   🔗 arXiv URL: http://arxiv.org/abs/1902.05509v2
+
+2. Citation b2: arXiv:2004.10934
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | ⚠️  Year mismatch
+   Scores:  Title=1.00 | Authors=3 | Year=False
+
+   📄 Title:
+      Extracted: YOLOv4: Optimal speed and accuracy of object detection
+      API:       YOLOv4: Optimal Speed and Accuracy of Object Detection
+
+   👥 Authors:
+      Extracted (3): Alexey Bochkovskiy, Chien-Yao Wang, Hong-Yuan Mark Liao
+      API (3):       Alexey Bochkovskiy, Chien-Yao Wang, Hong-Yuan Mark Liao
+
+   📅 Year & Venue:
+      Extracted: 2007 | Venue: YOLOv4: Optimal speed and accuracy of object detection
+      API:       2020
+
+   🔗 arXiv URL: http://arxiv.org/abs/2004.10934v1
+
+3. Citation b9: arXiv:1906.07155
+--------------------------------------------------------------------------------
+   Quality: 📕 Weak title match | ❓ No author match
+   Scores:  Title=0.73 | Authors=0 | Year=None
+
+   📄 Title:
+      Extracted: RTMDet-R-tiny 800×800 90.60 97.10 mmlab detection toolbox and benchmark
+      API:       MMDetection: Open MMLab Detection Toolbox and Benchmark
+
+   👥 Authors:
+      Extracted (0): None
+      API (25):       Kai Chen, Jiaqi Wang, Jiangmiao Pang, Yuhang Cao, Yu Xiong, Xiaoxiao Li, Shuyang Sun, Wansen Feng, Ziwei Liu, Jiarui Xu, Zheng Zhang, Dazhi Cheng, Chenchen Zhu, Tianheng Cheng, Qijie Zhao, Buyu Li, Xin Lu, Rui Zhu, Yue Wu, Jifeng Dai, Jingdong Wang, Jianping Shi, Wanli Ouyang, Chen Change Loy, Dahua Lin
+
+   📅 Year & Venue:
+      Extracted: None | Venue: RTMDet-R-tiny 800×800 90.60 97.10 mmlab detection toolbox and benchmark
+      API:       2019
+
+   🔗 arXiv URL: http://arxiv.org/abs/1906.07155v1
+
+4. Citation b10: arXiv:1903.10979
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | 📅 Year matches
+   Scores:  Title=1.00 | Authors=6 | Year=True
+
+   📄 Title:
+      Extracted: DetNAS: Backbone search for object detection
+      API:       DetNAS: Backbone Search for Object Detection
+
+   👥 Authors:
+      Extracted (6): Yukang Chen, Tong Yang, Xiangyu Zhang, Gaofeng Meng, Xinyu Xiao, Jian Sun
+      API (6):       Yukang Chen, Tong Yang, Xiangyu Zhang, Gaofeng Meng, Xinyu Xiao, Jian Sun
+
+   📅 Year & Venue:
+      Extracted: 2019 | Venue: DetNAS: Backbone search for object detection
+      API:       2019
+
+   🔗 arXiv URL: http://arxiv.org/abs/1903.10979v4
+
+5. Citation b15: arXiv:2203.06717
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | 📅 Year matches
+   Scores:  Title=1.00 | Authors=6 | Year=True
+
+   📄 Title:
+      Extracted: Scaling up your kernels to 31x31: Revisiting large kernel design in cnns
+      API:       Scaling Up Your Kernels to 31x31: Revisiting Large Kernel Design in CNNs
+
+   👥 Authors:
+      Extracted (6): Xiaohan Ding, Xiangyu Zhang, Yizhuang Zhou, Jungong Han, Guiguang Ding, Jian Sun
+      API (6):       Xiaohan Ding, Xiangyu Zhang, Yizhuang Zhou, Jungong Han, Guiguang Ding, Jian Sun
+
+   📅 Year & Venue:
+      Extracted: 2022 | Venue: Scaling up your kernels to 31x31: Revisiting large kernel design in cnns
+      API:       2022
+
+   🔗 arXiv URL: http://arxiv.org/abs/2203.06717v4
+
+6. Citation b17: arXiv:1912.05027
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | 📅 Year matches
+   Scores:  Title=0.99 | Authors=7 | Year=True
+
+   📄 Title:
+      Extracted: SpineNet: Learning scale-permuted backbone for recognition and localization
+      API:       SpineNet: Learning Scale-Permuted Backbone for Recognition and
+  Localization
+
+   👥 Authors:
+      Extracted (8): Xianzhi Du, Tsung-Yi Lin, Pengchong Jin, Golnaz Ghiasi, Mingxing Tan, Yin Cui, Quoc V Le, Xiaodan Song
+      API (8):       Xianzhi Du, Tsung-Yi Lin, Pengchong Jin, Golnaz Ghiasi, Mingxing Tan, Yin Cui, Quoc V. Le, Xiaodan Song
+
+   📅 Year & Venue:
+      Extracted: 2019 | Venue: SpineNet: Learning scale-permuted backbone for recognition and localization
+      API:       2019
+
+   🔗 arXiv URL: http://arxiv.org/abs/1912.05027v3
+
+7. Citation b21: arXiv:2107.08430
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | ⚠️  Year mismatch
+   Scores:  Title=1.00 | Authors=5 | Year=False
+
+   📄 Title:
+      Extracted: YOLOX: Exceeding YOLO series in 2021
+      API:       YOLOX: Exceeding YOLO Series in 2021
+
+   👥 Authors:
+      Extracted (5): Zheng Ge, Songtao Liu, Feng Wang, Zeming Li, Jian Sun
+      API (5):       Zheng Ge, Songtao Liu, Feng Wang, Zeming Li, Jian Sun
+
+   📅 Year & Venue:
+      Extracted: 2009 | Venue: YOLOX: Exceeding YOLO series in 2021
+      API:       2021
+
+   🔗 arXiv URL: http://arxiv.org/abs/2107.08430v2
+
+8. Citation b35: arXiv:1704.04861
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | 📅 Year matches
+   Scores:  Title=0.99 | Authors=7 | Year=True
+
+   📄 Title:
+      Extracted: Mobilenets: Efficient convolutional neural networks for mobile vision applications
+      API:       MobileNets: Efficient Convolutional Neural Networks for Mobile Vision
+  Applications
+
+   👥 Authors:
+      Extracted (8): Andrew G Howard, Menglong Zhu, Bo Chen, Dmitry Kalenichenko, Weijun Wang, Tobias Weyand, Marco Andreetto, Hartwig Adam
+      API (8):       Andrew G. Howard, Menglong Zhu, Bo Chen, Dmitry Kalenichenko, Weijun Wang, Tobias Weyand, Marco Andreetto, Hartwig Adam
+
+   📅 Year & Venue:
+      Extracted: 2017 | Venue: Mobilenets: Efficient convolutional neural networks for mobile vision applications
+      API:       2017
+
+   🔗 arXiv URL: http://arxiv.org/abs/1704.04861v1
+
+9. Citation b40: arXiv:2109.06148
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | 📅 Year matches
+   Scores:  Title=0.90 | Authors=3 | Year=True
+
+   📄 Title:
+      Extracted: Dafne: A one-stage anchor-free deep model for oriented object detection
+      API:       DAFNe: A One-Stage Anchor-Free Approach for Oriented Object Detection
+
+   👥 Authors:
+      Extracted (3): Steven Lang, Fabrizio Ventola, Kristian Kersting
+      API (3):       Steven Lang, Fabrizio Ventola, Kristian Kersting
+
+   📅 Year & Venue:
+      Extracted: 2021 | Venue: Dafne: A one-stage anchor-free deep model for oriented object detection
+      API:       2021
+
+   🔗 arXiv URL: http://arxiv.org/abs/2109.06148v4
+
+10. Citation b42: arXiv:2209.02976
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | ⚠️  Year mismatch
+   Scores:  Title=0.99 | Authors=18 | Year=False
+
+   📄 Title:
+      Extracted: Yolov6: A single-stage object detection framework for industrial applications
+      API:       YOLOv6: A Single-Stage Object Detection Framework for Industrial
+  Applications
+
+   👥 Authors:
+      Extracted (18): Chuyi Li, Lulu Li, Hongliang Jiang, Kaiheng Weng, Yifei Geng, Liang Li, Zaidan Ke, Qingyuan Li, Meng Cheng, Weiqiang Nie, Yiduo Li, Bo Zhang, Yufei Liang, Linyuan Zhou, Xiaoming Xu, Xiangxiang Chu, Xiaoming Wei, Xiaolin Wei
+      API (18):       Chuyi Li, Lulu Li, Hongliang Jiang, Kaiheng Weng, Yifei Geng, Liang Li, Zaidan Ke, Qingyuan Li, Meng Cheng, Weiqiang Nie, Yiduo Li, Bo Zhang, Yufei Liang, Linyuan Zhou, Xiaoming Xu, Xiangxiang Chu, Xiaoming Wei, Xiaolin Wei
+
+   📅 Year & Venue:
+      Extracted: 2007 | Venue: Yolov6: A single-stage object detection framework for industrial applications
+      API:       2022
+
+   🔗 arXiv URL: http://arxiv.org/abs/2209.02976v1
+
+11. Citation b52: arXiv:2201.03545
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | 📅 Year matches
+   Scores:  Title=1.00 | Authors=6 | Year=True
+
+   📄 Title:
+      Extracted: A convnet for the 2020s
+      API:       A ConvNet for the 2020s
+
+   👥 Authors:
+      Extracted (6): Zhuang Liu, Hanzi Mao, Chao-Yuan Wu, Christoph Feichtenhofer, Trevor Darrell, Saining Xie
+      API (6):       Zhuang Liu, Hanzi Mao, Chao-Yuan Wu, Christoph Feichtenhofer, Trevor Darrell, Saining Xie
+
+   📅 Year & Venue:
+      Extracted: 2022 | Venue: A convnet for the 2020s
+      API:       2022
+
+   🔗 arXiv URL: http://arxiv.org/abs/2201.03545v2
+
+12. Citation b65: arXiv:1804.02767
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👤 Partial author match | 📅 Year matches
+   Scores:  Title=1.00 | Authors=2 | Year=True
+
+   📄 Title:
+      Extracted: YOLOv3: An incremental improvement
+      API:       YOLOv3: An Incremental Improvement
+
+   👥 Authors:
+      Extracted (2): Joseph Redmon, Ali Farhadi
+      API (2):       Joseph Redmon, Ali Farhadi
+
+   📅 Year & Venue:
+      Extracted: 2018 | Venue: YOLOv3: An incremental improvement
+      API:       2018
+
+   🔗 arXiv URL: http://arxiv.org/abs/1804.02767v1
+
+13. Citation b70: arXiv:1904.01355
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | ❓ No author match | 📅 Year matches
+   Scores:  Title=1.00 | Authors=0 | Year=True
+
+   📄 Title:
+      Extracted: FCOS: Fully convolutional one-stage object detection
+      API:       FCOS: Fully Convolutional One-Stage Object Detection
+
+   👥 Authors:
+      Extracted (4): Chunhua Zhi Tian, Hao Shen, Tong Chen, He
+      API (4):       Zhi Tian, Chunhua Shen, Hao Chen, Tong He
+
+   📅 Year & Venue:
+      Extracted: 2019 | Venue: FCOS: Fully convolutional one-stage object detection
+      API:       2019
+
+   🔗 arXiv URL: http://arxiv.org/abs/1904.01355v5
+
+14. Citation b71: arXiv:2207.02696
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | ⚠️  Year mismatch
+   Scores:  Title=0.99 | Authors=3 | Year=False
+
+   📄 Title:
+      Extracted: Yolov7: Trainable bag-of-freebies sets new state-of-the-art for real-time object detectors
+      API:       YOLOv7: Trainable bag-of-freebies sets new state-of-the-art for
+  real-time object detectors
+
+   👥 Authors:
+      Extracted (3): Chien-Yao Wang, Alexey Bochkovskiy, Hong-Yuan Mark Liao
+      API (3):       Chien-Yao Wang, Alexey Bochkovskiy, Hong-Yuan Mark Liao
+
+   📅 Year & Venue:
+      Extracted: 2007 | Venue: Yolov7: Trainable bag-of-freebies sets new state-of-the-art for real-time object detectors
+      API:       2022
+
+   🔗 arXiv URL: http://arxiv.org/abs/2207.02696v1
+
+15. Citation b74: arXiv:1906.04423
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | 📅 Year matches
+   Scores:  Title=1.00 | Authors=6 | Year=True
+
+   📄 Title:
+      Extracted: NAS-FCOS: fast neural architecture search for object detection
+      API:       NAS-FCOS: Fast Neural Architecture Search for Object Detection
+
+   👥 Authors:
+      Extracted (6): Ning Wang, Yang Gao, Hao Chen, Peng Wang, Zhi Tian, Chunhua Shen
+      API (7):       Ning Wang, Yang Gao, Hao Chen, Peng Wang, Zhi Tian, Chunhua Shen, Yanning Zhang
+
+   📅 Year & Venue:
+      Extracted: 2019 | Venue: NAS-FCOS: fast neural architecture search for object detection
+      API:       2019
+
+   🔗 arXiv URL: http://arxiv.org/abs/1906.04423v4
+
+16. Citation b84: arXiv:2203.16250
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | ⚠️  Year mismatch
+   Scores:  Title=1.00 | Authors=11 | Year=False
+
+   📄 Title:
+      Extracted: PP-YOLOE: An evolved version of YOLO
+      API:       PP-YOLOE: An evolved version of YOLO
+
+   👥 Authors:
+      Extracted (11): Shangliang Xu, Xinxin Wang, Wenyu Lv, Qinyao Chang, Cheng Cui, Kaipeng Deng, Guanzhong Wang, Qingqing Dang, Shengyu Wei, Yuning Du, Baohua Lai
+      API (11):       Shangliang Xu, Xinxin Wang, Wenyu Lv, Qinyao Chang, Cheng Cui, Kaipeng Deng, Guanzhong Wang, Qingqing Dang, Shengyu Wei, Yuning Du, Baohua Lai
+
+   📅 Year & Venue:
+      Extracted: 2008 | Venue: PP-YOLOE: An evolved version of YOLO
+      API:       2022
+
+   🔗 arXiv URL: http://arxiv.org/abs/2203.16250v3
+
+17. Citation b91: arXiv:2201.12558
+--------------------------------------------------------------------------------
+   Quality: 📗 Excellent title match | 👥 Strong author match | 📅 Year matches
+   Scores:  Title=1.00 | Authors=7 | Year=True
+
+   📄 Title:
+      Extracted: The kfiou loss for rotated object detection
+      API:       The KFIoU Loss for Rotated Object Detection
+
+   👥 Authors:
+      Extracted (8): Xue Yang, Yue Zhou, Gefan Zhang, Jitui Yang, Wentao Wang, Junchi Yan, Xiaopeng Zhang, Qi Tian
+      API (8):       Xue Yang, Yue Zhou, Gefan Zhang, Jirui Yang, Wentao Wang, Junchi Yan, Xiaopeng Zhang, Qi Tian
+
+   📅 Year & Venue:
+      Extracted: 2022 | Venue: The kfiou loss for rotated object detection
+      API:       2022
+
+   🔗 arXiv URL: http://arxiv.org/abs/2201.12558v6
+
+================================================================================

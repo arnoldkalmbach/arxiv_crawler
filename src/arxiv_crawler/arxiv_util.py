@@ -1,4 +1,5 @@
 from typing import Any
+import re
 import requests
 import feedparser
 import tempfile
@@ -74,6 +75,61 @@ class CitationExtractor:
 
         return None
 
+    def _extract_arxiv_id(self, bib_elem, venue_list) -> str | None:
+        """
+        Extract arXiv ID from bibliography entry using multiple strategies.
+
+        Handles various formats:
+        - Explicit: <idno type="arXiv">arXiv:1902.05509</idno>
+        - CoRR: <idno>CoRR, abs/2004.10934</idno>
+        - URLs: http://arxiv.org/abs/2004.10934
+        - Preprint: arXiv preprint arXiv:2004.10934
+        """
+        # Strategy 1: Explicit arXiv identifier
+        arxiv_idno = bib_elem.xpath('.//tei:idno[@type="arXiv"]/text()', namespaces=self.ns)
+        if arxiv_idno:
+            text = arxiv_idno[0]
+            # Handle "arXiv:XXXX.XXXXX" or "arXiv XXXX.XXXXX" format
+            match = re.search(r"arXiv:?\s*(\d{4}\.\d{4,5})", text, re.IGNORECASE)
+            if match:
+                return match.group(1)
+
+        # Strategy 2: Check all idno elements for various patterns
+        for idno in bib_elem.xpath(".//tei:idno/text()", namespaces=self.ns):
+            # CoRR format: "CoRR, abs/2004.10934" or just "abs/2004.10934"
+            match = re.search(r"abs/(\d{4}\.\d{4,5})", idno)
+            if match:
+                return match.group(1)
+
+            # URL format: http://arxiv.org/abs/2004.10934 or https://arxiv.org/pdf/2004.10934.pdf
+            match = re.search(r"arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5})", idno, re.IGNORECASE)
+            if match:
+                return match.group(1)
+
+        # Strategy 3: Check ptr elements (URLs)
+        for ptr in bib_elem.xpath(".//tei:ptr/@target", namespaces=self.ns):
+            match = re.search(r"arxiv\.org/(?:abs|pdf)/(\d{4}\.\d{4,5})", ptr, re.IGNORECASE)
+            if match:
+                return match.group(1)
+
+        # Strategy 4: Check venue/title for CoRR or arXiv patterns
+        if venue_list:
+            venue_text = venue_list[0]
+            # CoRR format in venue
+            match = re.search(r"abs/(\d{4}\.\d{4,5})", venue_text)
+            if match:
+                return match.group(1)
+
+            # "arXiv preprint" pattern - check surrounding text
+            if "arxiv" in venue_text.lower():
+                # Get all text from the bib element to search more broadly
+                all_text = " ".join(bib_elem.xpath(".//text()"))
+                match = re.search(r"arXiv\s+preprint\s+arXiv:?(\d{4}\.\d{4,5})", all_text, re.IGNORECASE)
+                if match:
+                    return match.group(1)
+
+        return None
+
     def process_paper(self, pdf_path: str) -> dict[str, dict]:
         """
         Process paper and extract citations with their referring sentences.
@@ -122,11 +178,8 @@ class CitationExtractor:
             year = bib.xpath('.//tei:date[@type="published"]/@when', namespaces=self.ns)
             venue = bib.xpath(".//tei:monogr/tei:title/text()", namespaces=self.ns)
 
-            arxiv_id = bib.xpath('.//tei:idno[@type="arXiv"]/text()', namespaces=self.ns)
-            if arxiv_id and arxiv_id[0].startswith("arXiv:"):
-                arxiv_id = arxiv_id[0].replace("arXiv:", "")
-            else:
-                arxiv_id = None
+            # Extract arXiv ID using multiple strategies
+            arxiv_id = self._extract_arxiv_id(bib, venue)
 
             citations[citation_id] = {
                 "details": {
