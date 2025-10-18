@@ -1,0 +1,40 @@
+[project]
+name = "arxiv-crawler"
+version = "0.1.0"
+description = "Parse arxiv papers and follow links in references"
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+    "bibtexparser>=1.4.3",
+    "pdfminer>=20191125",
+    "polars>=1.34.0",
+    "tqdm>=4.67.1",
+]
+
+[dependency-groups]
+dev = [
+    "jupyter>=1.1.1",
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.1",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+# TODO: Configure selected linter rules if defaults don't work well
+# See https://docs.astral.sh/ruff/configuration/
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
