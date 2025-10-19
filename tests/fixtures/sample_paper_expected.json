@@ -43,15 +43,15 @@
       "arxiv_id": "2004.10934"
     },
     "references": [
-      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck",
-      "1 , RTMDet achieves a better parameter-accuracy trade-off than previous methods and gains superior performance to previous models  [3, 21, 25, 65]",
-      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]",
       "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
-      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
-      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
-      "Inspired by these findings, we introduce 5×5 depth-wise convolutions in the basic building block of CSPDarkNet  [3]  to increase the effective receptive fields (Fig",
       "Recent advances of YOLO series  [3, 21]  typically adopt CSPDarkNet  [3]  as the backbone architecture, which contains four stages and each stage is stacked with several basic building blocks (Fig",
-      "We first compare the effectiveness of different kernel sizes in the basic building block of CSPDarkNet  [3] , with kernel sizes ranging from 3×3 to 7×7"
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]",
+      "Inspired by these findings, we introduce 5×5 depth-wise convolutions in the basic building block of CSPDarkNet  [3]  to increase the effective receptive fields (Fig",
+      "1 , RTMDet achieves a better parameter-accuracy trade-off than previous methods and gains superior performance to previous models  [3, 21, 25, 65]",
+      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
+      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck",
+      "We first compare the effectiveness of different kernel sizes in the basic building block of CSPDarkNet  [3] , with kernel sizes ranging from 3×3 to 7×7",
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]"
     ]
   },
   "b3": {
@@ -102,8 +102,8 @@
       "arxiv_id": null
     },
     "references": [
-      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy",
-      "Recent advances typically adopt dynamic label assignment strategies  [6, 20, 21]  that use cost functions consistent with the training loss as the matching criterion"
+      "Recent advances typically adopt dynamic label assignment strategies  [6, 20, 21]  that use cost functions consistent with the training loss as the matching criterion",
+      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy"
     ]
   },
   "b6": {
@@ -384,8 +384,8 @@
     },
     "references": [
       "To train the one-stage object detector, the dense predictions from each scale will be matched with ground truth bounding boxes through different label assignment strategies  [19, 47, 70]",
-      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy",
-      "In addition to a better combination of data augmentations, optimization, and training schedules, we empirically find that existing dynamic label assignment strategies  [19, 21]  can be further improved by introducing soft targets instead of hard labels when matching ground truth boxes and model predictions"
+      "In addition to a better combination of data augmentations, optimization, and training schedules, we empirically find that existing dynamic label assignment strategies  [19, 21]  can be further improved by introducing soft targets instead of hard labels when matching ground truth boxes and model predictions",
+      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy"
     ]
   },
   "b20": {
@@ -403,9 +403,9 @@
       "arxiv_id": null
     },
     "references": [
-      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy",
+      "For region cost C center , we use a soft center region cost instead of a fixed center prior  [20, 21, 95]  to stabilize the matching of the dynamic cost as below",
       "Recent advances typically adopt dynamic label assignment strategies  [6, 20, 21]  that use cost functions consistent with the training loss as the matching criterion",
-      "For region cost C center , we use a soft center region cost instead of a fixed center prior  [20, 21, 95]  to stabilize the matching of the dynamic cost as below"
+      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy"
     ]
   },
   "b21": {
@@ -423,20 +423,20 @@
       "arxiv_id": "2107.08430"
     },
     "references": [
-      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy",
-      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
-      "1 , RTMDet achieves a better parameter-accuracy trade-off than previous methods and gains superior performance to previous models  [3, 21, 25, 65]",
-      "Following previous conventions, we use SimOTA  [21]  as our baseline and employ the Focal-Loss  [47]  and GIoU  [67] , which are the same as the training losses, as the cost matrix",
       "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
-      "Hence, we propose a dynamic soft label assignment strategy based on SimOTA  [21] , and its cost function is formulated as",
-      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
-      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
-      "In addition to a better combination of data augmentations, optimization, and training schedules, we empirically find that existing dynamic label assignment strategies  [19, 21]  can be further improved by introducing soft targets instead of hard labels when matching ground truth boxes and model predictions",
-      "To reduce the side effects of 'noisy' samples by strong data augmentations, YOLOX  [21]  explored a two-stage training strategy, where the first stage uses strong data augmentations, including Mosaic, MixUp, and random rotation and shear, and the second stage use weak data augmentations, such as random resizing and flipping",
-      "Recent advances of YOLO series  [3, 21]  typically adopt CSPDarkNet  [3]  as the backbone architecture, which contains four stages and each stage is stacked with several basic building blocks (Fig",
-      "Recent advances typically adopt dynamic label assignment strategies  [6, 20, 21]  that use cost functions consistent with the training loss as the matching criterion",
       "For region cost C center , we use a soft center region cost instead of a fixed center prior  [20, 21, 95]  to stabilize the matching of the dynamic cost as below",
-      "Second, the generated training sample is 'noisy' and may not belong to the real distribution of the dataset, which affects the model learning  [21] ."
+      "Inspired by the Hungarian Assignment for end-to-end object detection  [6] , dynamic label assignment  [19] [20] [21]  are explored to significantly improve the convergence speed and model accuracy",
+      "Recent advances typically adopt dynamic label assignment strategies  [6, 20, 21]  that use cost functions consistent with the training loss as the matching criterion",
+      "Recent advances of YOLO series  [3, 21]  typically adopt CSPDarkNet  [3]  as the backbone architecture, which contains four stages and each stage is stacked with several basic building blocks (Fig",
+      "In addition to a better combination of data augmentations, optimization, and training schedules, we empirically find that existing dynamic label assignment strategies  [19, 21]  can be further improved by introducing soft targets instead of hard labels when matching ground truth boxes and model predictions",
+      "1 , RTMDet achieves a better parameter-accuracy trade-off than previous methods and gains superior performance to previous models  [3, 21, 25, 65]",
+      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
+      "To reduce the side effects of 'noisy' samples by strong data augmentations, YOLOX  [21]  explored a two-stage training strategy, where the first stage uses strong data augmentations, including Mosaic, MixUp, and random rotation and shear, and the second stage use weak data augmentations, such as random resizing and flipping",
+      "Second, the generated training sample is 'noisy' and may not belong to the real distribution of the dataset, which affects the model learning  [21] .",
+      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
+      "Following previous conventions, we use SimOTA  [21]  as our baseline and employ the Focal-Loss  [47]  and GIoU  [67] , which are the same as the training losses, as the cost matrix",
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
+      "Hence, we propose a dynamic soft label assignment strategy based on SimOTA  [21] , and its cost function is formulated as"
     ]
   },
   "b22": {
@@ -503,14 +503,14 @@
       "arxiv_id": null
     },
     "references": [
-      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck",
-      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
-      "1 , RTMDet achieves a better parameter-accuracy trade-off than previous methods and gains superior performance to previous models  [3, 21, 25, 65]",
+      "It is worth noting that both  [25]  and  [71]  use mask annotation to refine the bounding boxes after data augmentation, resulting in a gain of about 0.3% AP",
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
       "This setting is consistent with previous studies  [25, 42, 71]  for a fair comparison",
       "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
-      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
-      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
-      "It is worth noting that both  [25]  and  [71]  use mask annotation to refine the bounding boxes after data augmentation, resulting in a gain of about 0.3% AP"
+      "1 , RTMDet achieves a better parameter-accuracy trade-off than previous methods and gains superior performance to previous models  [3, 21, 25, 65]",
+      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
+      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck",
+      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]"
     ]
   },
   "b26": {
@@ -578,8 +578,8 @@
       "arxiv_id": null
     },
     "references": [
-      "Based on an existing general object detector (e.g., RetinaNet  [47]  or Faster R-CNN  [66] ), different feature extraction networks are proposed to alleviate the feature misalignment  [28, 29, 88]  caused by object rotations",
-      "As shown in Table  A2 , RTMDet-R-l surpasses the previous best method ReDet  [29]  by 1.32% mAP."
+      "As shown in Table  A2 , RTMDet-R-l surpasses the previous best method ReDet  [29]  by 1.32% mAP.",
+      "Based on an existing general object detector (e.g., RetinaNet  [47]  or Faster R-CNN  [66] ), different feature extraction networks are proposed to alleviate the feature misalignment  [28, 29, 88]  caused by object rotations"
     ]
   },
   "b30": {
@@ -809,15 +809,15 @@
       "arxiv_id": "2209.02976"
     },
     "references": [
-      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck",
-      "It also increases the error gap after the model is quantized to lower bits, requiring compensation through re-parameterizing optimizer [13] and quantizationaware training  [42]",
-      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
       "The overall modification of the model architectures allows the fast inference speed of RTMDet without relying on model re-parameterizations  [42, 71, 84] .",
-      "This setting is consistent with previous studies  [25, 42, 71]  for a fair comparison",
+      "It is noteworthy that some recent real-time object detectors  [42, 71, 84]  explore re-parameterized 3×3 convolutions  [14]  in the basic building block (Fig",
       "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
-      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
+      "This setting is consistent with previous studies  [25, 42, 71]  for a fair comparison",
       "Recent advances also explore model re-parameterization  [14, 42, 71, 84]  to improve the inference speed after model deployment",
-      "It is noteworthy that some recent real-time object detectors  [42, 71, 84]  explore re-parameterized 3×3 convolutions  [14]  in the basic building block (Fig"
+      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
+      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
+      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck",
+      "It also increases the error gap after the model is quantized to lower bits, requiring compensation through re-parameterizing optimizer [13] and quantizationaware training  [42]"
     ]
   },
   "b43": {
@@ -890,9 +890,9 @@
       "arxiv_id": null
     },
     "references": [
-      "The neck takes the multiscale feature pyramid from the backbone and uses the same basic building blocks as the backbone with bottom-up and top-down feature propogation  [46, 49]  to enhance the pyramid feature map",
       "To evaluate the superiority of our label assignment strategy and loss, we first compare RTMDet-Ins with conventional methods using the standard ResNet50-FPN  [46]  backbone and the classic multi-scale 3x schedule  [9, 80]",
-      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]"
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]",
+      "The neck takes the multiscale feature pyramid from the backbone and uses the same basic building blocks as the backbone with bottom-up and top-down feature propogation  [46, 49]  to enhance the pyramid feature map"
     ]
   },
   "b47": {
@@ -911,8 +911,8 @@
     },
     "references": [
       "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]",
-      "To train the one-stage object detector, the dense predictions from each scale will be matched with ground truth bounding boxes through different label assignment strategies  [19, 47, 70]",
       "Based on an existing general object detector (e.g., RetinaNet  [47]  or Faster R-CNN  [66] ), different feature extraction networks are proposed to alleviate the feature misalignment  [28, 29, 88]  caused by object rotations",
+      "To train the one-stage object detector, the dense predictions from each scale will be matched with ground truth bounding boxes through different label assignment strategies  [19, 47, 70]",
       "Following previous conventions, we use SimOTA  [21]  as our baseline and employ the Focal-Loss  [47]  and GIoU  [67] , which are the same as the training losses, as the cost matrix",
       "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]"
     ]
@@ -936,9 +936,9 @@
       "arxiv_id": null
     },
     "references": [
+      "We also observe that the pre-training on general object detection datasets  [48]  is beneficial for rotated object detection in aerial scenarios  [81] .",
       "We evaluate the model performance on object detection and instance segmentation by bbox AP and mask AP  [48] , respectively.",
       "Orthogonal to these methods, this paper only extends a general object detector with minimal modifications (i.e., adding an angle prediction branch and replacing the GIoU  [67]  loss by Rotated IoU Loss  [97] ) and reveals that a high-precision general object detector paves the way for high-precision rotated object detection through the model architecture and the knowledge learned on general detection dataset  [48] .",
-      "We also observe that the pre-training on general object detection datasets  [48]  is beneficial for rotated object detection in aerial scenarios  [81] .",
       "We conduct experiments on COCO dataset  [48] , which contains about 118K images in the train2017 set and 5K images in the val2017 set for training and validation, respectively"
     ]
   },
@@ -957,8 +957,8 @@
       "arxiv_id": null
     },
     "references": [
-      "The neck takes the multiscale feature pyramid from the backbone and uses the same basic building blocks as the backbone with bottom-up and top-down feature propogation  [46, 49]  to enhance the pyramid feature map",
-      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]"
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]",
+      "The neck takes the multiscale feature pyramid from the backbone and uses the same basic building blocks as the backbone with bottom-up and top-down feature propogation  [46, 49]  to enhance the pyramid feature map"
     ]
   },
   "b50": {
@@ -978,8 +978,8 @@
       "arxiv_id": null
     },
     "references": [
-      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
-      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]"
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]",
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]"
     ]
   },
   "b51": {
@@ -1208,8 +1208,8 @@
       "arxiv_id": null
     },
     "references": [
-      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
-      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]"
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]",
+      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously."
     ]
   },
   "b65": {
@@ -1224,8 +1224,8 @@
       "arxiv_id": "1804.02767"
     },
     "references": [
-      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
       "1 , RTMDet achieves a better parameter-accuracy trade-off than previous methods and gains superior performance to previous models  [3, 21, 25, 65]",
+      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
       "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]"
     ]
   },
@@ -1243,8 +1243,8 @@
       "arxiv_id": null
     },
     "references": [
-      "Based on an existing general object detector (e.g., RetinaNet  [47]  or Faster R-CNN  [66] ), different feature extraction networks are proposed to alleviate the feature misalignment  [28, 29, 88]  caused by object rotations",
-      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]"
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]",
+      "Based on an existing general object detector (e.g., RetinaNet  [47]  or Faster R-CNN  [66] ), different feature extraction networks are proposed to alleviate the feature misalignment  [28, 29, 88]  caused by object rotations"
     ]
   },
   "b67": {
@@ -1263,9 +1263,9 @@
       "arxiv_id": null
     },
     "references": [
-      "Orthogonal to these methods, this paper only extends a general object detector with minimal modifications (i.e., adding an angle prediction branch and replacing the GIoU  [67]  loss by Rotated IoU Loss  [97] ) and reveals that a high-precision general object detector paves the way for high-precision rotated object detection through the model architecture and the knowledge learned on general detection dataset  [48] .",
       "When using Generalized IoU  [67]  as regression cost, the maximum difference between the best match and the worst match is less than 1",
-      "Following previous conventions, we use SimOTA  [21]  as our baseline and employ the Focal-Loss  [47]  and GIoU  [67] , which are the same as the training losses, as the cost matrix"
+      "Following previous conventions, we use SimOTA  [21]  as our baseline and employ the Focal-Loss  [47]  and GIoU  [67] , which are the same as the training losses, as the cost matrix",
+      "Orthogonal to these methods, this paper only extends a general object detector with minimal modifications (i.e., adding an angle prediction branch and replacing the GIoU  [67]  loss by Rotated IoU Loss  [97] ) and reveals that a high-precision general object detector paves the way for high-precision rotated object detection through the model architecture and the knowledge learned on general detection dataset  [48] ."
     ]
   },
   "b68": {
@@ -1299,14 +1299,14 @@
       "arxiv_id": null
     },
     "references": [
-      "As illustrated in Figure  4 , based on RT-MDet, an additional branch is added, consisting of a kernel prediction head and a mask feature head, similar to CondInst  [69]",
       "By simply adding a kernel and a mask feature generation head  [11, 69] , RTMDet can perform instance segmentation with only around 10% additional parameters",
       "Such an architecture generally applies to general and rotated objects, and can be extended for instance segmentation by the kernel and mask feature generation heads  [69] .",
-      "A representative of these attempts is based on dynamic kernels  [69, 77, 96] , which learn to generate dynamic kernels from either learned We use CSP-blocks  [72]  with large kernel depth-wise convolution layers to build the backbone",
       "We adopt an auxiliary semantic segmentation head for faster convergence speed and a fair comparison with CondInst  [69]",
-      "parameters  [96]  or dense feature maps  [69, 77]  and use them to conduct convolution with mask feature maps",
+      "Recent attempts perform instance segmentation in one stage with  [4, 69]  or without bounding boxes  [76, 77, 96]",
+      "A representative of these attempts is based on dynamic kernels  [69, 77, 96] , which learn to generate dynamic kernels from either learned We use CSP-blocks  [72]  with large kernel depth-wise convolution layers to build the backbone",
       "Inspired by these works, we extend RTMDet by kernel prediction and mask feature heads  [69]  to conduct instance segmentation.",
-      "Recent attempts perform instance segmentation in one stage with  [4, 69]  or without bounding boxes  [76, 77, 96]"
+      "parameters  [96]  or dense feature maps  [69, 77]  and use them to conduct convolution with mask feature maps",
+      "As illustrated in Figure  4 , based on RT-MDet, an additional branch is added, consisting of a kernel prediction head and a mask feature head, similar to CondInst  [69]"
     ]
   },
   "b70": {
@@ -1323,9 +1323,9 @@
       "arxiv_id": "1904.01355"
     },
     "references": [
-      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]",
+      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]",
       "To train the one-stage object detector, the dense predictions from each scale will be matched with ground truth bounding boxes through different label assignment strategies  [19, 47, 70]",
-      "For real-time applications, existing works mainly explore anchor-based  [47, 50, 64]  or anchor-free  [70, 98]  onestage detectors, instead of two-stage detectors  [5, 24, 59, 66]"
+      "Real-time object detectors typically utilize separate detection heads  [3, 21, 25, 50, 65]  for different feature scales to enhance the model capacity for higher performance, instead of sharing a detection head across multiple scales  [47, 70]"
     ]
   },
   "b71": {
@@ -1341,15 +1341,15 @@
       "arxiv_id": "2207.02696"
     },
     "references": [
-      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
       "The overall modification of the model architectures allows the fast inference speed of RTMDet without relying on model re-parameterizations  [42, 71, 84] .",
-      "This setting is consistent with previous studies  [25, 42, 71]  for a fair comparison",
-      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]",
-      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
-      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]",
-      "Recent advances also explore model re-parameterization  [14, 42, 71, 84]  to improve the inference speed after model deployment",
       "It is worth noting that both  [25]  and  [71]  use mask annotation to refine the bounding boxes after data augmentation, resulting in a gain of about 0.3% AP",
-      "It is noteworthy that some recent real-time object detectors  [42, 71, 84]  explore re-parameterized 3×3 convolutions  [14]  in the basic building block (Fig"
+      "It is noteworthy that some recent real-time object detectors  [42, 71, 84]  explore re-parameterized 3×3 convolutions  [14]  in the basic building block (Fig",
+      "Toward this goal, YOLO series  [3, 21, 25, 42, [63] [64] [65] 71]  explore different model architectures and training techniques to improve the accuracy and efficiency of one-stage object detectors continuously.",
+      "This setting is consistent with previous studies  [25, 42, 71]  for a fair comparison",
+      "Recent advances also explore model re-parameterization  [14, 42, 71, 84]  to improve the inference speed after model deployment",
+      "To improve the model efficiency, efficient backbone networks and model scaling strategies  [3, 41, 71]  and enhancement of multi-scale feature  [7, 23, 36, 46, 49, 68]  are ex-plored either by handcrafted design or neural architecture search  [10, 17, 23, 74]",
+      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
+      "Cross-sample augmentations such as MixUp [94] and CutMix  [93]  are widely adopted in recent object detectors  [3, 21, 25, 42, 71]"
     ]
   },
   "b72": {
@@ -1452,8 +1452,8 @@
       "arxiv_id": null
     },
     "references": [
-      "parameters  [96]  or dense feature maps  [69, 77]  and use them to conduct convolution with mask feature maps",
-      "Recent attempts perform instance segmentation in one stage with  [4, 69]  or without bounding boxes  [76, 77, 96]"
+      "Recent attempts perform instance segmentation in one stage with  [4, 69]  or without bounding boxes  [76, 77, 96]",
+      "parameters  [96]  or dense feature maps  [69, 77]  and use them to conduct convolution with mask feature maps"
     ]
   },
   "b78": {
@@ -1524,8 +1524,8 @@
       "arxiv_id": null
     },
     "references": [
-      "We conduct experiments on DOTA dataset  [81]  which contains 2.8K aerial images and 188K instances obtained from different sensors with multiple resolutions",
-      "We also observe that the pre-training on general object detection datasets  [48]  is beneficial for rotated object detection in aerial scenarios  [81] ."
+      "We also observe that the pre-training on general object detection datasets  [48]  is beneficial for rotated object detection in aerial scenarios  [81] .",
+      "We conduct experiments on DOTA dataset  [81]  which contains 2.8K aerial images and 188K instances obtained from different sensors with multiple resolutions"
     ]
   },
   "b82": {
@@ -1581,11 +1581,11 @@
       "arxiv_id": "2203.16250"
     },
     "references": [
-      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck",
-      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
       "The overall modification of the model architectures allows the fast inference speed of RTMDet without relying on model re-parameterizations  [42, 71, 84] .",
+      "It is noteworthy that some recent real-time object detectors  [42, 71, 84]  explore re-parameterized 3×3 convolutions  [14]  in the basic building block (Fig",
       "Recent advances also explore model re-parameterization  [14, 42, 71, 84]  to improve the inference speed after model deployment",
-      "It is noteworthy that some recent real-time object detectors  [42, 71, 84]  explore re-parameterized 3×3 convolutions  [14]  in the basic building block (Fig"
+      "We compare RTMDet with previous real-time object detectors including YOLOv5  [25] , YOLOX  [21] , YOLOv6  [42] , YOLOv7  [71] , and PPY-OLOE  [84]",
+      "Following  [3, 25, 42, 84] , we utilize the same basic block as the backbone for building the neck"
     ]
   },
   "b85": {
@@ -1789,8 +1789,8 @@
       "arxiv_id": null
     },
     "references": [
-      "parameters  [96]  or dense feature maps  [69, 77]  and use them to conduct convolution with mask feature maps",
-      "Recent attempts perform instance segmentation in one stage with  [4, 69]  or without bounding boxes  [76, 77, 96]"
+      "Recent attempts perform instance segmentation in one stage with  [4, 69]  or without bounding boxes  [76, 77, 96]",
+      "parameters  [96]  or dense feature maps  [69, 77]  and use them to conduct convolution with mask feature maps"
     ]
   },
   "b97": {

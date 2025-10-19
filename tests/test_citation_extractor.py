@@ -13,62 +13,6 @@ class TestProcessPaperIntegration:
     """
 
     @pytest.mark.integration
-    def test_process_paper_with_citations(self, sample_pdf_path, grobid_url):
-        """
-        Test processing a paper with citations.
-
-        Expected behavior:
-        - Returns a dictionary mapping citation IDs to citation data
-        - Each citation has 'details' (authors, title, year, venue, arxiv_id)
-        - Each citation has 'references' (list of sentences citing this work)
-        - Authors list should contain full names
-        - References should be deduplicated (no duplicate sentences)
-        """
-        extractor = CitationExtractor(grobid_url=grobid_url)
-
-        try:
-            citations = extractor.process_paper(sample_pdf_path)
-        except requests.exceptions.ConnectionError:
-            pytest.skip("Grobid server not available at http://localhost:8070")
-
-        # Basic structure checks
-        assert isinstance(citations, dict), "Should return a dictionary"
-
-        if len(citations) > 0:
-            # Check structure of first citation
-            first_citation_id = list(citations.keys())[0]
-            citation = citations[first_citation_id]
-
-            # Verify citation structure
-            assert "details" in citation, "Citation should have 'details' field"
-            assert "references" in citation, "Citation should have 'references' field"
-
-            # Verify details structure
-            details = citation["details"]
-            assert "authors" in details
-            assert "title" in details
-            assert "year" in details
-            assert "venue" in details
-            assert "arxiv_id" in details
-
-            # Type checks
-            assert isinstance(details["authors"], list), "Authors should be a list"
-            assert isinstance(citation["references"], list), "References should be a list"
-
-            # Print sample output for manual verification
-            print(f"\n{'=' * 60}")
-            print(f"Sample citation ID: {first_citation_id}")
-            print(f"Title: {details['title']}")
-            print(f"Authors: {details['authors']}")
-            print(f"Year: {details['year']}")
-            print(f"Venue: {details['venue']}")
-            print(f"ArXiv ID: {details['arxiv_id']}")
-            print(f"Number of referring sentences: {len(citation['references'])}")
-            if citation["references"]:
-                print(f"First reference: {citation['references'][0][:100]}...")
-            print(f"{'=' * 60}\n")
-
-    @pytest.mark.integration
     def test_citation_reference_matching(self, sample_pdf_path, grobid_url):
         """
         Test that citations are correctly matched to their references in the text.
@@ -90,7 +34,7 @@ class TestProcessPaperIntegration:
             pytest.skip("No citations found in sample PDF")
 
         # Analyze reference distribution
-        cited_count = sum(1 for c in citations.values() if len(c["references"]) > 0)
+        cited_count = sum(1 for c in citations.values() if len(c.references) > 0)
         uncited_count = len(citations) - cited_count
 
         print(f"\n{'=' * 60}")
@@ -100,7 +44,7 @@ class TestProcessPaperIntegration:
 
         # Check for citations with references
         for citation_id, citation in citations.items():
-            references = citation["references"]
+            references = citation.references
 
             if len(references) > 0:
                 # Verify uniqueness
@@ -116,7 +60,7 @@ class TestProcessPaperIntegration:
                 if cited_count > 0:
                     print(f"\nSample citation with {len(references)} reference(s):")
                     print(f"Citation ID: {citation_id}")
-                    print(f"Title: {citation['details']['title']}")
+                    print(f"Title: {citation.details.title}")
                     for i, ref in enumerate(references[:2], 1):  # Show max 2
                         print(f"  Reference {i}: {ref[:150]}...")
                     cited_count = -1  # Only print once
@@ -143,17 +87,17 @@ class TestProcessPaperIntegration:
         if len(citations) == 0:
             pytest.skip("No citations found in sample PDF")
 
-        arxiv_citations = [c for c in citations.values() if c["details"]["arxiv_id"] is not None]
+        arxiv_citations = [c for c in citations.values() if c.details.arxiv_id is not None]
 
         print(f"\n{'=' * 60}")
         print(f"Total citations: {len(citations)}")
         print(f"Citations with arXiv ID: {len(arxiv_citations)}")
 
         for citation in arxiv_citations[:3]:  # Show max 3 examples
-            arxiv_id = citation["details"]["arxiv_id"]
+            arxiv_id = citation.details.arxiv_id
             # Verify arXiv: prefix is stripped
             assert not arxiv_id.startswith("arXiv:"), f"arXiv ID should not have 'arXiv:' prefix: {arxiv_id}"
-            print(f"  ArXiv ID: {arxiv_id} - {citation['details']['title'][:60]}...")
+            print(f"  ArXiv ID: {arxiv_id} - {citation.details.title[:60] if citation.details.title else 'N/A'}...")
 
         print(f"{'=' * 60}\n")
 
@@ -194,14 +138,15 @@ class TestProcessPaperIntegration:
 
             # Compare details
             for key in ["authors", "title", "year", "venue", "arxiv_id"]:
-                actual_val = actual["details"][key]
+                # Access Citation object attributes
+                actual_val = getattr(actual.details, key)
                 expected_val = expected["details"][key]
 
                 if actual_val != expected_val:
                     differences.append(f"Citation {cid}, field '{key}': expected {expected_val!r}, got {actual_val!r}")
 
             # Compare references (order doesn't matter, but content does)
-            actual_refs = set(actual["references"])
+            actual_refs = set(actual.references)
             expected_refs = set(expected["references"])
 
             if actual_refs != expected_refs:
@@ -405,11 +350,11 @@ class TestCitationDetails:
             citations = extractor.process_paper(str(dummy_pdf))
 
             assert "b0" in citations
-            authors = citations["b0"]["details"]["authors"]
+            authors = citations["b0"].details.authors
             assert len(authors) == 3
             assert "Alice Johnson" in authors
             assert "Bob Williams" in authors
             assert "Charlie Brown" in authors
-            assert citations["b0"]["details"]["title"] == "Test Paper"
-            assert citations["b0"]["details"]["year"] == "2023"
-            assert citations["b0"]["details"]["venue"] == "Test Journal"
+            assert citations["b0"].details.title == "Test Paper"
+            assert citations["b0"].details.year == "2023"
+            assert citations["b0"].details.venue == "Test Journal"

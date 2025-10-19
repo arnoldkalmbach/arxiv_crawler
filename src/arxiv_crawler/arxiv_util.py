@@ -3,11 +3,64 @@ import re
 import requests
 import feedparser
 import tempfile
+from io import BytesIO
 from lxml import etree
+from pdfminer.high_level import extract_text
+from pdfminer.layout import LAParams
+
+from arxiv_crawler.models import Citation, CitationDetails
 
 
 arxiv_url_pattern = r"(?:https?://)?(?:www\.)?arxiv\.org/abs/(?:\d{4}\.\d{4,}|\d{7})"
 arxiv_id_pattern = r"arXiv.*?(\d{4}\.\d{4,}|\d{7})"
+
+
+def normalize_arxiv_id(arxiv_id: str) -> str:
+    """Normalize arxiv ID by removing version suffix (v1, v2, etc.)."""
+    if not arxiv_id:
+        return arxiv_id
+    # Remove version suffix like "v1", "v2"
+    if "v" in arxiv_id and arxiv_id.split("v")[-1].isdigit():
+        return arxiv_id.rsplit("v", 1)[0]
+    return arxiv_id
+
+
+def extract_arxiv_text_simple(arxiv_url_or_path: str) -> str | None:
+    """
+    Extract full text from an arXiv PDF URL or file path using PDFMiner.
+
+    Args:
+        arxiv_url_or_path: URL to the arXiv PDF or path to a local PDF file
+
+    Returns:
+        Extracted text as string, or None if extraction fails
+    """
+    try:
+        laparams = LAParams(
+            line_margin=0.5,
+            word_margin=0.1,
+            char_margin=2.0,
+            boxes_flow=0.5,
+        )
+
+        # Check if it's a URL or a file path
+        if arxiv_url_or_path.startswith("http://") or arxiv_url_or_path.startswith("https://"):
+            # Download PDF
+            response = requests.get(arxiv_url_or_path, timeout=30)
+            if response.status_code != 200:
+                print(f"Failed to download PDF: {response.status_code}")
+                return None
+            pdf_file = BytesIO(response.content)
+            text = extract_text(pdf_file, laparams=laparams)
+        else:
+            # Extract from local file
+            text = extract_text(arxiv_url_or_path, laparams=laparams)
+
+        return text.strip()
+
+    except Exception as e:
+        print(f"Error extracting text: {str(e)}")
+        return None
 
 
 def get_arxiv_metadata(arxiv_ids: list[str]) -> list[dict[str, Any]]:
@@ -130,12 +183,12 @@ class CitationExtractor:
 
         return None
 
-    def process_paper(self, pdf_path: str) -> dict[str, dict]:
+    def process_paper(self, pdf_path: str) -> dict[str, Citation]:
         """
         Process paper and extract citations with their referring sentences.
 
         Returns:
-            dictionary mapping citation IDs to citation details and references
+            Dictionary mapping citation IDs to Citation objects
         """
 
         with open(pdf_path, "rb") as pdf_file:
@@ -149,7 +202,9 @@ class CitationExtractor:
         parser = etree.XMLParser(recover=True)
         root = etree.fromstring(response.content, parser)
 
-        citations = {}
+        citations: dict[str, Citation] = {}
+        # Track references temporarily in sets
+        references_sets: dict[str, set[str]] = {}
 
         # Process bibliography entries
         for bib in root.xpath("//tei:listBibl/tei:biblStruct", namespaces=self.ns):
@@ -181,25 +236,32 @@ class CitationExtractor:
             # Extract arXiv ID using multiple strategies
             arxiv_id = self._extract_arxiv_id(bib, venue)
 
-            citations[citation_id] = {
-                "details": {
-                    "authors": authors,
-                    "title": title[0] if title else None,
-                    "year": year[0] if year else None,
-                    "venue": venue[0] if venue else None,
-                    "arxiv_id": arxiv_id,
-                },
-                "references": set(),
-            }
+            # Create Citation object
+            details = CitationDetails(
+                authors=authors,
+                title=title[0] if title else None,
+                year=year[0] if year else None,
+                venue=venue[0] if venue else None,
+                arxiv_id=arxiv_id,
+            )
 
-            # Find citation references in the text
-            for ref in root.xpath('//tei:ref[@type="bibr"]', namespaces=self.ns):
-                target = ref.get("target", "").lstrip("#")
-                if target in citations:
-                    sentence = self._get_sentence_context(ref)
-                    if sentence:
-                        citations[target]["references"].add(sentence)
+            citations[citation_id] = Citation(
+                citation_id=citation_id,
+                details=details,
+                references=[],  # Will be populated below
+            )
+            references_sets[citation_id] = set()
 
-        for target in citations:
-            citations[target]["references"] = list(citations[target]["references"])
+        # Find citation references in the text
+        for ref in root.xpath('//tei:ref[@type="bibr"]', namespaces=self.ns):
+            target = ref.get("target", "").lstrip("#")
+            if target in citations:
+                sentence = self._get_sentence_context(ref)
+                if sentence:
+                    references_sets[target].add(sentence)
+
+        # Convert sets to lists in Citation objects
+        for citation_id, citation in citations.items():
+            citation.references = list(references_sets[citation_id])
+
         return citations

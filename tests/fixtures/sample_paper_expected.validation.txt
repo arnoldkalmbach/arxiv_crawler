@@ -68,7 +68,7 @@
       API (25):       Kai Chen, Jiaqi Wang, Jiangmiao Pang, Yuhang Cao, Yu Xiong, Xiaoxiao Li, Shuyang Sun, Wansen Feng, Ziwei Liu, Jiarui Xu, Zheng Zhang, Dazhi Cheng, Chenchen Zhu, Tianheng Cheng, Qijie Zhao, Buyu Li, Xin Lu, Rui Zhu, Yue Wu, Jifeng Dai, Jingdong Wang, Jianping Shi, Wanli Ouyang, Chen Change Loy, Dahua Lin
 
    📅 Year & Venue:
-      Extracted: None | Venue: RTMDet-R-tiny 800×800 90.60 97.10 mmlab detection toolbox and benchmark
+      Extracted:  | Venue: RTMDet-R-tiny 800×800 90.60 97.10 mmlab detection toolbox and benchmark
       API:       2019
 
    🔗 arXiv URL: http://arxiv.org/abs/1906.07155v1

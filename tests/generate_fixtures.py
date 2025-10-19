@@ -39,7 +39,7 @@ def validate_arxiv_ids(citations: dict) -> dict:
     id_to_citation = {}
 
     for cid, citation in citations.items():
-        arxiv_id = citation["details"]["arxiv_id"]
+        arxiv_id = citation.details.arxiv_id
         if arxiv_id:
             arxiv_ids.append(arxiv_id)
             id_to_citation[arxiv_id] = (cid, citation)
@@ -70,23 +70,23 @@ def validate_arxiv_ids(citations: dict) -> dict:
 
         for arxiv_id in arxiv_ids:
             cid, citation = id_to_citation[arxiv_id]
-            extracted = citation["details"]
+            extracted = citation.details
 
             if arxiv_id in api_by_id:
                 valid_ids.append(arxiv_id)
                 api_data = api_by_id[arxiv_id]
 
                 # Compare metadata
-                title_sim = similarity(extracted.get("title", ""), api_data.get("title", ""))
+                title_sim = similarity(extracted.title or "", api_data.get("title", ""))
 
                 # Check author overlap
-                extracted_authors = set(extracted.get("authors", []))
+                extracted_authors = set(extracted.authors)
                 api_authors = set(api_data.get("authors", []))
                 author_overlap = len(extracted_authors & api_authors) if extracted_authors and api_authors else 0
 
                 # Extract year from published date (YYYY-MM-DD)
                 api_year = api_data.get("published", "")[:4] if api_data.get("published") else None
-                extracted_year = extracted.get("year", "")[:4] if extracted.get("year") else None
+                extracted_year = extracted.year[:4] if extracted.year else None
                 year_match = api_year == extracted_year if api_year and extracted_year else None
 
                 metadata_matches.append(
@@ -96,10 +96,10 @@ def validate_arxiv_ids(citations: dict) -> dict:
                         "title_similarity": round(title_sim, 2),
                         "author_overlap": author_overlap,
                         "year_match": year_match,
-                        "extracted_title": extracted.get("title", ""),
-                        "extracted_authors": extracted.get("authors", []),
-                        "extracted_year": extracted.get("year", ""),
-                        "extracted_venue": extracted.get("venue", ""),
+                        "extracted_title": extracted.title or "",
+                        "extracted_authors": extracted.authors,
+                        "extracted_year": extracted.year or "",
+                        "extracted_venue": extracted.venue or "",
                         "api_title": api_data.get("title", ""),
                         "api_authors": api_data.get("authors", []),
                         "api_year": api_year,
@@ -233,7 +233,7 @@ def generate_validation_report(validation_results: dict) -> str:
             lines.append(f"\n   🔗 arXiv URL: {match['api_url']}")
 
     lines.append("\n" + "=" * 80 + "\n")
-    
+
     return "\n".join(lines)
 
 
@@ -258,24 +258,28 @@ def generate_citation_fixture(pdf_path: Path, output_path: Path, grobid_url: str
 
     # Print statistics
     print(f"\nExtracted {len(citations)} citations")
-    cited_count = sum(1 for c in citations.values() if len(c["references"]) > 0)
+    cited_count = sum(1 for c in citations.values() if len(c.references) > 0)
     print(f"  - {cited_count} cited in text")
     print(f"  - {len(citations) - cited_count} only in bibliography")
 
-    arxiv_count = sum(1 for c in citations.values() if c["details"]["arxiv_id"] is not None)
+    arxiv_count = sum(1 for c in citations.values() if c.details.arxiv_id is not None)
     print(f"  - {arxiv_count} have arXiv IDs")
 
     # Validate arXiv IDs
     validation_results = validate_arxiv_ids(citations)
     validation_report = generate_validation_report(validation_results)
-    
+
     # Print the report to console
     print(validation_report)
 
-    # Save fixture JSON
+    # Save fixture JSON (convert Citation objects to dicts)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(citations, f, indent=2, ensure_ascii=False)
+        # Convert Citation objects to dict format for JSON serialization
+        citations_dict = {}
+        for cit_id, citation in citations.items():
+            citations_dict[cit_id] = {"details": citation.details.model_dump(), "references": citation.references}
+        json.dump(citations_dict, f, indent=2, ensure_ascii=False)
 
     # Save validation report to file
     validation_report_path = output_path.with_suffix(".validation.txt")
