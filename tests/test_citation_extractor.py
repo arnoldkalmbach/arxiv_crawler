@@ -26,7 +26,7 @@ class TestProcessPaperIntegration:
         extractor = CitationExtractor(grobid_url=grobid_url)
 
         try:
-            citations = extractor.process_paper(sample_pdf_path)
+            citations, _ = extractor.process_paper(sample_pdf_path)
         except requests.exceptions.ConnectionError:
             pytest.skip("Grobid server not available at http://localhost:8070")
 
@@ -80,7 +80,7 @@ class TestProcessPaperIntegration:
         extractor = CitationExtractor(grobid_url=grobid_url)
 
         try:
-            citations = extractor.process_paper(sample_pdf_path)
+            citations, _ = extractor.process_paper(sample_pdf_path)
         except requests.exceptions.ConnectionError:
             pytest.skip("Grobid server not available at http://localhost:8070")
 
@@ -118,7 +118,7 @@ class TestProcessPaperIntegration:
         extractor = CitationExtractor(grobid_url=grobid_url)
 
         try:
-            citations = extractor.process_paper(sample_pdf_path)
+            citations, _ = extractor.process_paper(sample_pdf_path)
         except requests.exceptions.ConnectionError:
             pytest.skip("Grobid server not available at http://localhost:8070")
 
@@ -185,7 +185,7 @@ class TestErrorHandling:
         dummy_pdf.write_bytes(b"%PDF-1.4\n%dummy content")
 
         with pytest.raises(requests.exceptions.ConnectionError):
-            extractor.process_paper(str(dummy_pdf))
+            _ = extractor.process_paper(str(dummy_pdf))
 
     def test_grobid_server_error_response(self, tmp_path):
         """
@@ -206,7 +206,7 @@ class TestErrorHandling:
             mock_post.return_value = mock_response
 
             with pytest.raises(requests.exceptions.HTTPError):
-                extractor.process_paper(str(dummy_pdf))
+                _ = extractor.process_paper(str(dummy_pdf))
 
     def test_file_not_found(self):
         """
@@ -218,7 +218,7 @@ class TestErrorHandling:
         extractor = CitationExtractor()
 
         with pytest.raises(FileNotFoundError):
-            extractor.process_paper("/nonexistent/path/to/file.pdf")
+            _ = extractor.process_paper("/nonexistent/path/to/file.pdf")
 
     def test_malformed_xml_recovery(self, tmp_path):
         """
@@ -254,10 +254,11 @@ class TestErrorHandling:
             mock_post.return_value = mock_response
 
             # Should not raise an exception due to recover=True in parser
-            citations = extractor.process_paper(str(dummy_pdf))
+            citations, xml_content = extractor.process_paper(str(dummy_pdf))
 
             # Should return empty or partial results
             assert isinstance(citations, dict)
+            assert isinstance(xml_content, bytes)
 
 
 class TestCitationDetails:
@@ -347,7 +348,7 @@ class TestCitationDetails:
             mock_response.content = xml_response
             mock_post.return_value = mock_response
 
-            citations = extractor.process_paper(str(dummy_pdf))
+            citations, _ = extractor.process_paper(str(dummy_pdf))
 
             assert "b0" in citations
             authors = citations["b0"].details.authors

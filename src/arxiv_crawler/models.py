@@ -1,7 +1,7 @@
 """Data models for the arxiv crawler."""
 
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class CitationDetails(BaseModel):
@@ -38,6 +38,8 @@ class ProcessedCitation(BaseModel):
 class ProcessedPaper(BaseModel):
     """Complete data for a processed paper."""
 
+    model_config = ConfigDict(extra="forbid")
+
     arxiv_id: str
     title: str
     authors: list[str]
@@ -46,13 +48,9 @@ class ProcessedPaper(BaseModel):
     published: str
     pdf_url: str
     arxiv_url: str
-    full_text: str
+    xml_file_path: str
     citations: list[ProcessedCitation]
     num_citations: int
     num_arxiv_citations: int
     depth: int
     processing_timestamp: str
-
-    class Config:
-        # Allow extra fields for future extensibility
-        extra = "allow"

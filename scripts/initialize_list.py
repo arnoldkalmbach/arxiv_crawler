@@ -90,5 +90,5 @@ if __name__ == "__main__":
 
     arxiv_ids.extend([url.split("/")[-1] for url in raw_urls])
 
-    with open("../data/initial_arxiv_ids.json", "w") as f:
+    with open("data/initial_arxiv_ids.json", "w") as f:
         json.dump(arxiv_ids, f)

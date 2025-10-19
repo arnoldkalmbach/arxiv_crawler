@@ -250,7 +250,7 @@ def generate_citation_fixture(pdf_path: Path, output_path: Path, grobid_url: str
 
     try:
         extractor = CitationExtractor(grobid_url=grobid_url)
-        citations = extractor.process_paper(str(pdf_path))
+        citations, _ = extractor.process_paper(str(pdf_path))
     except Exception as e:
         print(f"Error processing PDF: {e}")
         print("Make sure Grobid server is running at http://localhost:8070")

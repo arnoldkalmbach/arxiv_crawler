@@ -2,6 +2,7 @@ import requests
 import json
 import heapq
 import tempfile
+import gzip
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -11,7 +12,6 @@ from tqdm.auto import tqdm
 
 from arxiv_crawler.arxiv_util import (
     get_arxiv_metadata,
-    extract_arxiv_text_simple,
     normalize_arxiv_id,
     CitationExtractor,
 )
@@ -41,18 +41,20 @@ class ArxivCrawler:
         self.rate_limit_delay = rate_limit_delay
 
         # File paths
-        self.papers_file = self.output_dir / "papers.jsonl"
-        self.state_file = self.output_dir / "crawler_state.json"
+        self.papers_file: Path = self.output_dir / "papers.jsonl"
+        self.state_file: Path = self.output_dir / "crawler_state.json"
+        self.xml_dir: Path = self.output_dir / "xml_docs"
+        self.xml_dir.mkdir(parents=True, exist_ok=True)
 
         # Citation extractor
         self.citation_extractor = CitationExtractor(grobid_url=grobid_url)
 
         # State tracking
-        self.processed_ids = set()  # Successfully processed
-        self.failed_ids = set()  # Failed to process (don't retry)
-        self.citation_counts = {}  # arxiv_id -> citation count
-        self.priority_queue = []  # min heap: (-priority, arxiv_id, depth)
-        self.queued_ids = set()  # Papers in queue
+        self.processed_ids: set[str] = set()  # Successfully processed arxiv ids
+        self.failed_ids: set[str] = set()  # Failed to process arxiv ids (don't retry)
+        self.citation_counts: dict[str, int] = {}  # arxiv_id -> citation count
+        self.priority_queue: list[tuple[int, int, str]] = []  # min heap: (-priority, depth, arxiv_id)
+        self.queued_ids: set[str] = set()  # arxiv ids in queue
 
         self._load_state()
 
@@ -83,14 +85,16 @@ class ArxivCrawler:
         """Add paper to priority queue if not already processed/queued."""
         arxiv_id = normalize_arxiv_id(arxiv_id)
 
-        if arxiv_id in self.processed_ids or arxiv_id in self.failed_ids or arxiv_id in self.queued_ids:
+        if arxiv_id in self.processed_ids or arxiv_id in self.failed_ids:
             return
 
-        # Get citation count (default to 0 for seed papers)
-        priority = self.citation_counts.get(arxiv_id, 0)
+        # Note, we may be pushing the same paper multiple times to the queue,
+        # When we reach a paper that's already been processed, we'll just skip it
 
+        # Get citation count (default to 1 for seed papers)
         # Use negative priority for max heap behavior (higher citations = higher priority)
-        heapq.heappush(self.priority_queue, (-priority, arxiv_id, depth))
+        priority = self.citation_counts.get(arxiv_id, 1)
+        heapq.heappush(self.priority_queue, (-priority, depth, arxiv_id))
         self.queued_ids.add(arxiv_id)
 
     def _process_paper(self, arxiv_id: str, depth: int) -> Optional[ProcessedPaper]:
@@ -121,19 +125,19 @@ class ArxivCrawler:
                 tmp_pdf_path = Path(tmp_file.name)
 
             try:
-                # Extract full text from the downloaded PDF
-                print("  - Extracting full text...")
-                full_text = extract_arxiv_text_simple(str(tmp_pdf_path))
-                if not full_text:
-                    print("  ✗ Failed to extract text")
-                    return None
-
-                # Extract citations using Grobid from the same PDF
-                print("  - Extracting citations with Grobid...")
-                citations = self.citation_extractor.process_paper(str(tmp_pdf_path))
+                # Extract citations and XML using Grobid from the PDF
+                print("  - Extracting citations and XML with Grobid...")
+                citations, xml_content = self.citation_extractor.process_paper(str(tmp_pdf_path))
             finally:
                 # Clean up temp file that was created with delete=False
                 tmp_pdf_path.unlink(missing_ok=True)
+
+            # Save XML to compressed file
+            xml_filename = f"{arxiv_id.replace('/', '_')}.xml.gz"
+            xml_file_path = self.xml_dir / xml_filename
+            print("  - Saving compressed XML...")
+            with gzip.open(xml_file_path, "wb") as gz_file:
+                gz_file.write(xml_content)
 
             # Process citations and update queue
             discovered_arxiv_ids = []
@@ -176,7 +180,7 @@ class ArxivCrawler:
                 published=metadata["published"],
                 pdf_url=metadata["pdf_url"],
                 arxiv_url=metadata["arxiv_url"],
-                full_text=full_text,
+                xml_file_path=str(xml_file_path.relative_to(self.output_dir)),
                 citations=processed_citations,
                 num_citations=len(citations),
                 num_arxiv_citations=len(discovered_arxiv_ids),
@@ -225,12 +229,15 @@ class ArxivCrawler:
 
             while self.priority_queue and papers_processed < self.max_papers:
                 # Pop highest priority paper
-                neg_priority, arxiv_id, depth = heapq.heappop(self.priority_queue)
+                neg_priority, depth, arxiv_id = heapq.heappop(self.priority_queue)
                 self.queued_ids.discard(arxiv_id)
 
-                if arxiv_id in self.processed_ids or arxiv_id in self.failed_ids:
+                if arxiv_id in self.processed_ids:
+                    continue
+
+                if arxiv_id in self.failed_ids:
                     # This shouldn't happen, we  need to debug if it does
-                    raise ValueError(f"Paper {arxiv_id} already processed or failed")
+                    raise ValueError(f"Paper {arxiv_id} failed")
 
                 # Process paper
                 paper_data = self._process_paper(arxiv_id, depth)

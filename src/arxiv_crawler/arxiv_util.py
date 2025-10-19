@@ -107,7 +107,7 @@ class CitationExtractor:
         """Get all text content from an element."""
         return " ".join(elem.xpath(".//text()")).strip()
 
-    def _get_sentence_context(self, ref_elem) -> str:
+    def _get_sentence_context(self, ref_elem) -> str | None:
         """Extract the sentence containing a citation reference."""
         # Try to find parent sentence element
         sentence = ref_elem.xpath("./ancestor::tei:s", namespaces=self.ns)
@@ -183,12 +183,12 @@ class CitationExtractor:
 
         return None
 
-    def process_paper(self, pdf_path: str) -> dict[str, Citation]:
+    def process_paper(self, pdf_path: str) -> tuple[dict[str, Citation], bytes]:
         """
         Process paper and extract citations with their referring sentences.
 
         Returns:
-            Dictionary mapping citation IDs to Citation objects
+            Tuple of (citations dictionary, raw XML content as bytes)
         """
 
         with open(pdf_path, "rb") as pdf_file:
@@ -198,9 +198,12 @@ class CitationExtractor:
             )
             response.raise_for_status()
 
+        # Store raw XML content to return
+        xml_content = response.content
+
         # Parse XML
         parser = etree.XMLParser(recover=True)
-        root = etree.fromstring(response.content, parser)
+        root = etree.fromstring(xml_content, parser)
 
         citations: dict[str, Citation] = {}
         # Track references temporarily in sets
@@ -264,4 +267,4 @@ class CitationExtractor:
         for citation_id, citation in citations.items():
             citation.references = list(references_sets[citation_id])
 
-        return citations
+        return citations, xml_content
