@@ -26,13 +26,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-papers",
         type=int,
-        default=100,
+        default=1000,
         help="Maximum number of papers to crawl",
     )
     parser.add_argument(
         "--rate-limit-delay",
         type=float,
-        default=3.0,
+        default=0.1,
         help="Seconds between arxiv API calls",
     )
     args = parser.parse_args()
