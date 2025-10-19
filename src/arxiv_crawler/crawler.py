@@ -1,6 +1,5 @@
 import requests
 import json
-import heapq
 import tempfile
 import gzip
 from datetime import datetime
@@ -52,9 +51,7 @@ class ArxivCrawler:
         # State tracking
         self.processed_ids: set[str] = set()  # Successfully processed arxiv ids
         self.failed_ids: set[str] = set()  # Failed to process arxiv ids (don't retry)
-        self.citation_counts: dict[str, int] = {}  # arxiv_id -> citation count
-        self.priority_queue: list[tuple[int, int, str]] = []  # min heap: (-priority, depth, arxiv_id)
-        self.queued_ids: set[str] = set()  # arxiv ids in queue
+        self.queued_ids: dict[str, tuple[int, int]] = {}  # arxiv_id -> (num citations seen so far, depth)
 
         self._load_state()
 
@@ -66,40 +63,26 @@ class ArxivCrawler:
                 state = json.load(f)
                 self.processed_ids = set(state.get("processed_ids", []))
                 self.failed_ids = set(state.get("failed_ids", []))
-                self.citation_counts = state.get("citation_counts", {})
+                self.queued_ids = state.get("queued_ids", {})
                 print(f"  - Processed: {len(self.processed_ids)} papers")
                 print(f"  - Failed: {len(self.failed_ids)} papers")
+                print(f"  - Queued: {len(self.queued_ids)} papers")
 
     def _save_state(self):
         """Save current crawler state."""
         state = {
             "processed_ids": list(self.processed_ids),
             "failed_ids": list(self.failed_ids),
-            "citation_counts": self.citation_counts,
+            "queued_ids": self.queued_ids,
             "last_updated": datetime.now().isoformat(),
         }
         with open(self.state_file, "w") as f:
             json.dump(state, f, indent=2)
 
-    def _add_to_queue(self, arxiv_id: str, depth: int = 0):
-        """Add paper to priority queue if not already processed/queued."""
-        arxiv_id = normalize_arxiv_id(arxiv_id)
-
-        if arxiv_id in self.processed_ids or arxiv_id in self.failed_ids:
-            return
-
-        # Note, we may be pushing the same paper multiple times to the queue,
-        # When we reach a paper that's already been processed, we'll just skip it
-
-        # Get citation count (default to 1 for seed papers)
-        # Use negative priority for max heap behavior (higher citations = higher priority)
-        priority = self.citation_counts.get(arxiv_id, 1)
-        heapq.heappush(self.priority_queue, (-priority, depth, arxiv_id))
-        self.queued_ids.add(arxiv_id)
-
     def _process_paper(self, arxiv_id: str, depth: int) -> Optional[ProcessedPaper]:
         """Process a single paper: fetch metadata, text, and citations."""
-        print(f"\n[Depth {depth}] Processing: {arxiv_id} (cited {self.citation_counts.get(arxiv_id, 0)} times)")
+
+        print(f"\n[Depth {depth}] Processing: {arxiv_id}")
 
         try:
             # Fetch metadata
@@ -161,12 +144,12 @@ class ArxivCrawler:
                 if citation.details.arxiv_id:
                     cited_id = normalize_arxiv_id(citation.details.arxiv_id)
                     discovered_arxiv_ids.append(cited_id)
-
-                    # Update citation count
-                    self.citation_counts[cited_id] = self.citation_counts.get(cited_id, 0) + 1
-
-                    # Add to queue
-                    self._add_to_queue(cited_id, depth + 1)
+                    if cited_id not in self.processed_ids and cited_id not in self.failed_ids:
+                        if cited_id not in self.queued_ids:
+                            self.queued_ids[cited_id] = (1, depth + 1)
+                        else:
+                            _, original_depth = self.queued_ids[cited_id]
+                            self.queued_ids[cited_id] = (self.queued_ids[cited_id][0] + 1, original_depth)
 
             print(f"  ✓ Found {len(citations)} citations, {len(discovered_arxiv_ids)} with arxiv IDs")
 
@@ -213,7 +196,13 @@ class ArxivCrawler:
         """
         # Initialize queue with seed papers
         for arxiv_id in seed_arxiv_ids:
-            self._add_to_queue(arxiv_id, depth=0)
+            arxiv_id = normalize_arxiv_id(arxiv_id)
+            if arxiv_id in self.processed_ids or arxiv_id in self.failed_ids:
+                print(f"  - Skipping {arxiv_id} because it has already been processed or failed")
+            elif arxiv_id in self.queued_ids:
+                print(f"  - Skipping {arxiv_id} because it is already in the queue")
+            else:
+                self.queued_ids[arxiv_id] = (0, 0)
 
         print(f"\n{'=' * 60}")
         print(f"Starting crawl with {len(seed_arxiv_ids)} seed papers")
@@ -227,17 +216,10 @@ class ArxivCrawler:
         with tqdm(total=self.max_papers, desc="Crawling papers") as pbar:
             pbar.update(len(self.processed_ids))
 
-            while self.priority_queue and papers_processed < self.max_papers:
-                # Pop highest priority paper
-                neg_priority, depth, arxiv_id = heapq.heappop(self.priority_queue)
-                self.queued_ids.discard(arxiv_id)
-
-                if arxiv_id in self.processed_ids:
-                    continue
-
-                if arxiv_id in self.failed_ids:
-                    # This shouldn't happen, we  need to debug if it does
-                    raise ValueError(f"Paper {arxiv_id} failed")
+            while self.queued_ids and papers_processed < self.max_papers:
+                # Pop highest priority paper: max num citations, min depth
+                arxiv_id, (num_citations, depth) = max(self.queued_ids.items(), key=lambda x: (x[1][0], -x[1][1]))
+                del self.queued_ids[arxiv_id]
 
                 # Process paper
                 paper_data = self._process_paper(arxiv_id, depth)
@@ -259,13 +241,13 @@ class ArxivCrawler:
 
                 # Show queue status
                 print(
-                    f"  Queue size: {len(self.priority_queue)} | Processed: {len(self.processed_ids)} | Failed: {len(self.failed_ids)}"
+                    f"  Queue size: {len(self.queued_ids)} | Processed: {len(self.processed_ids)} | Failed: {len(self.failed_ids)}"
                 )
 
         print(f"\n{'=' * 60}")
         print("Crawl complete!")
         print(f"  - Processed: {len(self.processed_ids)} papers")
         print(f"  - Failed: {len(self.failed_ids)} papers")
-        print(f"  - Remaining in queue: {len(self.priority_queue)}")
+        print(f"  - Remaining in queue: {len(self.queued_ids)}")
         print(f"  - Output: {self.papers_file}")
         print(f"{'=' * 60}\n")
