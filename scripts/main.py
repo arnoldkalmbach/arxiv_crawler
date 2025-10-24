@@ -26,14 +26,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-papers",
         type=int,
-        default=1000,
+        default=2000,
         help="Maximum number of papers to crawl",
     )
     parser.add_argument(
         "--rate-limit-delay",
         type=float,
-        default=0.1,
+        default=1.0,
         help="Seconds between arxiv API calls",
+    )
+    parser.add_argument(
+        "--priority",
+        type=lambda s: [x.strip() for x in s.split(",")],
+        default=["num_citations", "depth"],
+        help="Priority for selecting next paper, e.g., 'num_citations,depth' or 'depth,num_citations'",
     )
     args = parser.parse_args()
 
@@ -49,6 +55,7 @@ if __name__ == "__main__":
         grobid_url=args.grobid_url,
         max_papers=args.max_papers,
         rate_limit_delay=args.rate_limit_delay,
+        priority=('depth', 'num_citations'),
     )
 
     crawler.crawl(seed_arxiv_ids=seed_arxiv_ids)

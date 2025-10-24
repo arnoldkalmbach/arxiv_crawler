@@ -4,7 +4,7 @@ import tempfile
 import gzip
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Literal
 import time
 
 from tqdm.auto import tqdm
@@ -31,6 +31,7 @@ class ArxivCrawler:
         grobid_url: str = "http://localhost:8070",
         max_papers: int = 100,
         rate_limit_delay: float = 3.0,  # seconds between arxiv API calls
+        priority: tuple[Literal["num_citations", "depth"], Literal["num_citations", "depth"]] = ("num_citations", "depth"),
     ):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -38,6 +39,7 @@ class ArxivCrawler:
         self.grobid_url = grobid_url
         self.max_papers = max_papers
         self.rate_limit_delay = rate_limit_delay
+        self.priority = priority
 
         # File paths
         self.papers_file: Path = self.output_dir / "papers.jsonl"
@@ -187,6 +189,18 @@ class ArxivCrawler:
             # Use Pydantic's model_dump to convert to dict, then serialize to JSON
             f.write(paper_data.model_dump_json() + "\n")
 
+    def _pop_next_paper(self) -> tuple[str, int]:
+        if self.priority == ("num_citations", "depth"):
+            arxiv_id, (num_citations, depth) = max(self.queued_ids.items(), key=lambda x: (x[1][0], -x[1][1]))
+
+        elif self.priority == ("depth", "num_citations"):
+            arxiv_id, (num_citations, depth) = max(self.queued_ids.items(), key=lambda x: (-x[1][1], x[1][0]))
+        else:
+            raise ValueError(f"Invalid priority: {self.priority}")
+
+        del self.queued_ids[arxiv_id]
+        return arxiv_id, depth
+
     def crawl(self, seed_arxiv_ids: list[str]):
         """
         Main crawl loop.
@@ -211,16 +225,20 @@ class ArxivCrawler:
         print(f"Output: {self.papers_file}")
         print(f"{'=' * 60}\n")
 
-        papers_processed = 0
+        # Do breadth-first search for the first half of processing
+        self.priority = ("depth", "num_citations")
+
+        papers_processed = len(self.processed_ids)
 
         with tqdm(total=self.max_papers, desc="Crawling papers") as pbar:
-            pbar.update(len(self.processed_ids))
+            pbar.update(papers_processed)
+            if papers_processed > self.max_papers // 2:
+                # Go deep on top citations for the second half of processing
+                self.priority = ("num_citations", "depth")
 
             while self.queued_ids and papers_processed < self.max_papers:
                 # Pop highest priority paper: max num citations, min depth
-                arxiv_id, (num_citations, depth) = max(self.queued_ids.items(), key=lambda x: (x[1][0], -x[1][1]))
-                del self.queued_ids[arxiv_id]
-
+                arxiv_id, depth = self._pop_next_paper()
                 # Process paper
                 paper_data = self._process_paper(arxiv_id, depth)
 
