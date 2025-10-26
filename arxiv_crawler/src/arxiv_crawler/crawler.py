@@ -31,7 +31,10 @@ class ArxivCrawler:
         grobid_url: str = "http://localhost:8070",
         max_papers: int = 100,
         rate_limit_delay: float = 3.0,  # seconds between arxiv API calls
-        priority: tuple[Literal["num_citations", "depth"], Literal["num_citations", "depth"]] = ("num_citations", "depth"),
+        priority: tuple[Literal["num_citations", "depth"], Literal["num_citations", "depth"]] = (
+            "num_citations",
+            "depth",
+        ),
     ):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -211,10 +214,14 @@ class ArxivCrawler:
         # Initialize queue with seed papers
         for arxiv_id in seed_arxiv_ids:
             arxiv_id = normalize_arxiv_id(arxiv_id)
-            if arxiv_id in self.processed_ids or arxiv_id in self.failed_ids:
-                print(f"  - Skipping {arxiv_id} because it has already been processed or failed")
+            if arxiv_id in self.processed_ids:
+                print(f"  - Skipping {arxiv_id} because it has already been processed")
+            elif arxiv_id in self.failed_ids:
+                print(f"  - Skipping {arxiv_id} because it has already failed")
             elif arxiv_id in self.queued_ids:
                 print(f"  - Skipping {arxiv_id} because it is already in the queue")
+                num_citations, _ = self.queued_ids[arxiv_id]
+                self.queued_ids[arxiv_id] = (num_citations, 0)
             else:
                 self.queued_ids[arxiv_id] = (0, 0)
 

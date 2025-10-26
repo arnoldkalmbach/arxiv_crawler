@@ -55,7 +55,7 @@ if __name__ == "__main__":
         grobid_url=args.grobid_url,
         max_papers=args.max_papers,
         rate_limit_delay=args.rate_limit_delay,
-        priority=('depth', 'num_citations'),
+        priority=("depth", "num_citations"),
     )
 
     crawler.crawl(seed_arxiv_ids=seed_arxiv_ids)
