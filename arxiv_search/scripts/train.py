@@ -1,5 +1,6 @@
 from functools import partial
 from typing import Any, Optional
+from pathlib import Path
 import torch
 import torch.optim as optim
 from transformers import BertConfig, BertModel
@@ -88,6 +89,55 @@ def collate_embeddings_with_targets(
     }
 
 
+def ensure_dataset_exists(data_dir: Path, hf_dataset_name: Optional[str] = None) -> Path:
+    """
+    Ensure the dataset exists locally. Download from HuggingFace if it doesn't.
+    
+    Args:
+        data_dir: Local directory where dataset should be
+        hf_dataset_name: HuggingFace dataset name (e.g., 'username/dataset-name'). 
+                        If None, will not attempt to download.
+    
+    Returns:
+        Path to the data directory
+    """
+    # Check if essential files exist
+    paper_embeddings = data_dir / "paper_embeddings.parquet"
+    train_citations = data_dir / "train" / "citations.jsonl"
+    
+    if paper_embeddings.exists() and train_citations.exists():
+        print(f"Dataset found at {data_dir}")
+        return data_dir
+    
+    if hf_dataset_name is None:
+        raise FileNotFoundError(
+            f"Dataset not found at {data_dir} and no HuggingFace dataset name provided. "
+            "Either ensure the dataset exists locally or provide --hf-dataset-name."
+        )
+    
+    print(f"Dataset not found locally. Downloading from HuggingFace: {hf_dataset_name}")
+    from huggingface_hub import snapshot_download
+    
+    # Download dataset, excluding XML files
+    downloaded_path = snapshot_download(
+        repo_id=hf_dataset_name,
+        repo_type="dataset",
+        allow_patterns=[
+            "paper_embeddings.parquet",
+            "papers.jsonl",
+            "train/*.jsonl",
+            "train/*.parquet",
+            "test/*.jsonl",
+            "test/*.parquet",
+        ],
+        local_dir=str(data_dir),
+        local_dir_use_symlinks=False,  # Copy files instead of symlinking
+    )
+    
+    print(f"Dataset downloaded to {downloaded_path}")
+    return Path(downloaded_path)
+
+
 collate_fn = partial(
     collate_embeddings_with_targets,
     max_length=256,
@@ -96,11 +146,17 @@ collate_fn = partial(
     mask_dtype=torch.bool,
 )
 
+# Configuration
+DATA_DIR = Path("data")
+HF_DATASET_NAME = None  # Set to "username/dataset-name" to enable auto-download
+
+# Ensure dataset exists (download if necessary)
+data_dir = ensure_dataset_exists(DATA_DIR, HF_DATASET_NAME)
 
 train_ds = CitationEmbeddingDataset(
-    citations_file="data/train/citations.jsonl",
-    paper_embeddings_file="data/paper_embeddings.parquet",
-    citation_embeddings_dir="data/train",
+    citations_file=data_dir / "train/citations.jsonl",
+    paper_embeddings_file=data_dir / "paper_embeddings.parquet",
+    citation_embeddings_dir=data_dir / "train",
     citations_batch_size=10000,
 )
 print("Created train dataset")

@@ -68,9 +68,9 @@ class CitationEmbeddingDataset(IterableDataset):
 
     def _load_shard_embeddings(self, shard_id: int) -> dict[str, torch.Tensor]:
         """Load citation embeddings for a specific shard."""
-        shard_file = self.citation_embeddings_dir / f"citation_embeddings_{shard_id * self.citations_batch_size}.arrow"
+        shard_file = self.citation_embeddings_dir / f"citation_embeddings_{shard_id * self.citations_batch_size}.parquet"
 
-        shard_data = pl.read_ipc(shard_file)
+        shard_data = pl.read_parquet(shard_file)
 
         citation_embeddings_dict = {}
         for row in shard_data.iter_rows(named=True):

@@ -224,8 +224,8 @@ def generate_citation_embeddings_batch(
             + [citations_batch["reference_id"]]
         )
 
-        output_path = output_dir / f"citation_embeddings_{batch_start}.arrow"
-        citation_embeddings.write_ipc(str(output_path))
+        output_path = output_dir / f"citation_embeddings_{batch_start}.parquet"
+        citation_embeddings.write_parquet(str(output_path), compression="zstd")
 
 
 def parse_args():
@@ -235,7 +235,7 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--input-papers", type=str, default="../../data/papers.jsonl", help="Path to input papers JSONL file"
+        "--input-papers", type=str, default="../arxiv_crawler/data/papers.jsonl", help="Path to input papers JSONL file"
     )
 
     parser.add_argument("--output-dir", type=str, default=".", help="Directory to save output files")
@@ -347,10 +347,10 @@ def main():
         print("    paper_embeddings.parquet (shared)")
         print("    train/")
         print("      citations.jsonl")
-        print("      citation_embeddings_*.arrow")
+        print("      citation_embeddings_*.parquet")
         print("    test/")
         print("      citations.jsonl")
-        print("      citation_embeddings_*.arrow")
+        print("      citation_embeddings_*.parquet")
 
 
 if __name__ == "__main__":
