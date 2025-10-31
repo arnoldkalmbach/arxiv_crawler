@@ -2,8 +2,176 @@ import polars as pl
 import torch
 import numpy as np
 import random
-from torch.utils.data import IterableDataset, get_worker_info
+from functools import partial
+from typing import Any, Optional
 from pathlib import Path
+from torch.utils.data import IterableDataset, get_worker_info
+from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data._utils.collate import default_collate
+from huggingface_hub import snapshot_download
+
+
+def _to_tensor(x):
+    """Convert input to tensor if not already a tensor."""
+    return x if isinstance(x, torch.Tensor) else torch.as_tensor(x)
+
+
+def collate_embeddings_with_targets(
+    batch: list[tuple[torch.Tensor, Any]],
+    max_length: Optional[int] = None,
+    pad_to_multiple_of: Optional[int] = None,
+    pad_value: float = 0.0,
+    mask_dtype: torch.dtype = torch.bool,
+):
+    """
+    Collate function for batching embeddings with targets.
+
+    Designed for use with CitationEmbeddingDataset.
+
+    Args:
+        batch: list of (X, y) tuples where:
+            X: [seq_len, embed_dim] (float tensor or array)
+            y: target vector (same shape across samples; tensor/array/number/dict ok)
+        max_length: Maximum sequence length (truncate if longer)
+        pad_to_multiple_of: Pad sequences to multiple of this value
+        pad_value: Value to use for padding
+        mask_dtype: Data type for attention mask
+
+    Returns:
+        Dictionary containing:
+            - inputs: FloatTensor [B, L, K] - padded input embeddings
+            - attention_mask: Bool/Int Tensor [B, L] (True/1 = real token)
+            - lengths: LongTensor [B] - pre-padding lengths
+            - targets: stacked y (shape depends on your dataset; typically [B, T])
+    """
+    # Convert to tensors and apply truncation
+    Xs, Ys = [], []
+    for X, y in batch:
+        Xt = _to_tensor(X)  # [Li, K]
+        if max_length is not None:
+            Xt = Xt[:max_length]
+        Xs.append(Xt)
+        Ys.append(y)
+
+    # Compute lengths and target pad length
+    lengths = torch.tensor([x.size(0) for x in Xs], dtype=torch.long)
+
+    # Optionally pad L up to a multiple (helps on some accelerators)
+    if pad_to_multiple_of is not None:
+        max_len = int(lengths.max().item())
+        if max_len % pad_to_multiple_of != 0:
+            max_len = ((max_len + pad_to_multiple_of - 1) // pad_to_multiple_of) * pad_to_multiple_of
+        # Truncate already done; pad_sequence will handle padding up to the longest in list,
+        # so we extend each shorter sequence with EMPTY rows to reach max_len.
+        # pad_sequence itself can't force a larger-than-maximum length, so we manually
+        # right-pad each X to max_len first.
+        K = Xs[0].size(1)
+        padded_list = []
+        for x in Xs:
+            if x.size(0) < max_len:
+                pad_rows = max_len - x.size(0)
+                pad_block = x.new_full((pad_rows, K), pad_value)
+                padded_list.append(torch.cat([x, pad_block], dim=0))
+            else:
+                padded_list.append(x)
+        inputs = torch.stack(padded_list, dim=0)  # [B, L, K]
+    else:
+        # Let pad_sequence expand to the within-batch max
+        inputs = pad_sequence([_to_tensor(x) for x in Xs], batch_first=True, padding_value=pad_value)
+
+    # Build attention mask from true lengths (before any manual right-padding)
+    L = inputs.size(1)
+    arange = torch.arange(L).unsqueeze(0)  # [1, L]
+    attention_mask = arange < lengths.unsqueeze(1)
+    attention_mask = attention_mask.to(mask_dtype)
+
+    # Stack targets robustly (supports tensors, numbers, tuples, dicts, etc.)
+    targets = default_collate([_to_tensor(y) for y in Ys])
+
+    return {
+        "inputs": inputs,  # [B, L, K], float
+        "attention_mask": attention_mask,  # [B, L], bool (or chosen dtype)
+        "lengths": lengths,  # [B]
+        "targets": targets,  # e.g., [B, T] or [B] depending on your dataset
+    }
+
+
+def get_collate_fn(
+    max_length: int = 256,
+    pad_to_multiple_of: int = 8,
+    pad_value: float = 0.0,
+    mask_dtype: torch.dtype = torch.bool,
+):
+    """
+    Get a collate function configured for CitationEmbeddingDataset.
+
+    Args:
+        max_length: Maximum sequence length
+        pad_to_multiple_of: Pad to multiple of this value
+        pad_value: Padding value
+        mask_dtype: Data type for attention mask
+
+    Returns:
+        Partial function configured for collating embeddings
+    """
+    return partial(
+        collate_embeddings_with_targets,
+        max_length=max_length,
+        pad_to_multiple_of=pad_to_multiple_of,
+        pad_value=pad_value,
+        mask_dtype=mask_dtype,
+    )
+
+
+def ensure_dataset_exists(data_dir: Path, hf_dataset_name: Optional[str] = None) -> Path:
+    """
+    Ensure the dataset exists locally. Download from HuggingFace if it doesn't.
+
+    Args:
+        data_dir: Local directory where dataset should be
+        hf_dataset_name: HuggingFace dataset name (e.g., 'username/dataset-name').
+                        If None, will not attempt to download.
+
+    Returns:
+        Path to the data directory
+
+    Raises:
+        FileNotFoundError: If dataset not found locally and no HuggingFace name provided
+    """
+    # Check if essential files exist
+    paper_embeddings = data_dir / "paper_embeddings.parquet"
+    train_citations = data_dir / "train" / "citations.jsonl"
+
+    if paper_embeddings.exists() and train_citations.exists():
+        print(f"Dataset found at {data_dir}")
+        return data_dir
+
+    if hf_dataset_name is None:
+        raise FileNotFoundError(
+            f"Dataset not found at {data_dir} and no HuggingFace dataset name provided. "
+            "Either ensure the dataset exists locally or provide --hf-dataset-name."
+        )
+
+    print(f"Dataset not found locally. Downloading from HuggingFace: {hf_dataset_name}")
+
+    # Download dataset, excluding XML files
+    downloaded_path = snapshot_download(
+        repo_id=hf_dataset_name,
+        repo_type="dataset",
+        allow_patterns=[
+            "paper_embeddings.parquet",
+            "papers.jsonl",
+            "train/*.jsonl",
+            "train/*.parquet",
+            "test/*.jsonl",
+            "test/*.parquet",
+        ],
+        local_dir=str(data_dir),
+        local_dir_use_symlinks=False,  # Copy files instead of symlinking
+    )
+
+    print(f"Dataset downloaded to {downloaded_path}")
+    return Path(downloaded_path)
 
 
 class CitationEmbeddingDataset(IterableDataset):
@@ -68,7 +236,9 @@ class CitationEmbeddingDataset(IterableDataset):
 
     def _load_shard_embeddings(self, shard_id: int) -> dict[str, torch.Tensor]:
         """Load citation embeddings for a specific shard."""
-        shard_file = self.citation_embeddings_dir / f"citation_embeddings_{shard_id * self.citations_batch_size}.parquet"
+        shard_file = (
+            self.citation_embeddings_dir / f"citation_embeddings_{shard_id * self.citations_batch_size}.parquet"
+        )
 
         shard_data = pl.read_parquet(shard_file)
 

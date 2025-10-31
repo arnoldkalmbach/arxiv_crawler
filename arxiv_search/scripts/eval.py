@@ -1,9 +1,8 @@
-"""Training script for citation embedding model."""
+"""Evaluation script for citation embedding model."""
 
 import argparse
 from pathlib import Path
 import torch
-import torch.optim as optim
 from torch.utils.data import DataLoader
 from omegaconf import OmegaConf
 
@@ -13,27 +12,27 @@ from arxiv_search.dataloader import (
     ensure_dataset_exists,
     get_collate_fn,
 )
-from arxiv_search.model import create_model
-from arxiv_search.training import train
+from arxiv_search.model import load_model
+from arxiv_search.training import evaluate, print_metrics, save_metrics
 
 
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Train citation embedding model",
+        description="Evaluate citation embedding model on test set",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--model-path",
+        type=str,
+        required=True,
+        help="Path to trained model checkpoint (.pth file)",
     )
     parser.add_argument(
         "--device",
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
-        help="Device to use for training (cuda or cpu)",
-    )
-    parser.add_argument(
-        "--models-dir",
-        type=str,
-        default="models",
-        help="Directory to save model checkpoints",
+        help="Device to use for evaluation (cuda or cpu)",
     )
     return parser.parse_args()
 
@@ -65,7 +64,7 @@ def load_config() -> Config:
 
 
 def main():
-    """Main training function."""
+    """Main evaluation function."""
     # Parse required arguments
     args = parse_args()
 
@@ -74,15 +73,14 @@ def main():
 
     # Convert paths
     data_dir = Path(cfg.data.data_dir)
-    models_dir = Path(args.models_dir)
-    tensorboard_dir = Path(cfg.training.tensorboard_dir)
+    model_path = Path(args.model_path)
 
     # Print configuration
     print("=" * 60)
-    print("Training Configuration")
+    print("Evaluation Configuration")
     print("=" * 60)
+    print(f"Model path: {model_path}")
     print(f"Device: {args.device}")
-    print(f"Models directory: {models_dir}")
     print()
     print(OmegaConf.to_yaml(cfg))
     print("=" * 60)
@@ -91,15 +89,21 @@ def main():
     # Ensure dataset exists (download if necessary)
     data_dir = ensure_dataset_exists(data_dir, cfg.data.hf_dataset_name)
 
-    # Create train dataset
-    print("Loading training dataset...")
-    train_ds = CitationEmbeddingDataset(
-        citations_file=data_dir / "train/citations.jsonl",
+    # Check if test split exists
+    test_citations = data_dir / "test" / "citations.jsonl"
+    if not test_citations.exists():
+        raise FileNotFoundError(f"Test split not found at {test_citations}. Please ensure the test split is available.")
+
+    # Create test dataset
+    print("Loading test dataset...")
+    test_ds = CitationEmbeddingDataset(
+        citations_file=test_citations,
         paper_embeddings_file=data_dir / "paper_embeddings.parquet",
-        citation_embeddings_dir=data_dir / "train",
+        citation_embeddings_dir=data_dir / "test",
         citations_batch_size=cfg.data.citations_batch_size,
+        shuffle=False,  # Don't shuffle for evaluation
+        shuffle_shards=False,
     )
-    print("Created train dataset")
 
     # Create dataloader
     collate_fn = get_collate_fn(
@@ -109,20 +113,24 @@ def main():
         mask_dtype=torch.bool,
     )
 
-    train_loader = DataLoader(
-        train_ds,
-        batch_size=cfg.training.batch_size,
-        num_workers=cfg.training.num_workers,
+    test_loader = DataLoader(
+        test_ds,
+        batch_size=cfg.evaluation.batch_size,
+        num_workers=cfg.evaluation.num_workers,
         collate_fn=collate_fn,
-        persistent_workers=True if cfg.training.num_workers > 0 else False,
+        persistent_workers=True if cfg.evaluation.num_workers > 0 else False,
         pin_memory=True if args.device == "cuda" else False,
-        prefetch_factor=3 if cfg.training.num_workers > 0 else None,
+        prefetch_factor=3 if cfg.evaluation.num_workers > 0 else None,
     )
-    print("Created train loader")
+    print("Test dataset loaded.")
 
-    # Create model
-    print("\nCreating model...")
-    model = create_model(
+    # Load model
+    print(f"\nLoading model from {model_path}...")
+    if not model_path.exists():
+        raise FileNotFoundError(f"Model checkpoint not found at {model_path}")
+
+    model = load_model(
+        str(model_path),
         device=args.device,
         hidden_size=cfg.model.hidden_size,
         num_hidden_layers=cfg.model.num_hidden_layers,
@@ -130,32 +138,25 @@ def main():
         intermediate_size=cfg.model.intermediate_size,
         max_position_embeddings=cfg.model.max_position_embeddings,
     )
-    print("Model created")
+    print("Model loaded successfully.")
 
-    # Create optimizer
-    optimizer = optim.AdamW(model.parameters(), lr=cfg.training.learning_rate)
-
-    # Train model
-    print(f"\nStarting training for {cfg.training.num_epochs} epochs...")
-    print("=" * 60)
-
-    train(
+    # Run evaluation
+    print("\nStarting evaluation...\n")
+    metrics = evaluate(
         model=model,
-        dataloader=train_loader,
-        optimizer=optimizer,
+        dataloader=test_loader,
         device=args.device,
-        num_epochs=cfg.training.num_epochs,
-        log_steps=cfg.training.log_steps,
-        save_steps=cfg.training.save_steps,
-        save_dir=models_dir,
-        tensorboard_dir=tensorboard_dir,
+        max_batches=cfg.evaluation.max_batches,
+        show_progress=True,
     )
 
-    print("\n" + "=" * 60)
-    print("Training complete!")
-    print(f"Checkpoints saved to: {models_dir}")
-    print(f"TensorBoard logs saved to: {tensorboard_dir}")
-    print(f"\nView training progress with: tensorboard --logdir {tensorboard_dir}")
+    # Print results
+    print_metrics(metrics)
+
+    # Save metrics to file (next to model checkpoint)
+    metrics_path = model_path.parent / f"{model_path.stem}_eval_metrics.txt"
+    save_metrics(metrics, metrics_path, model_path)
+    print(f"Metrics saved to {metrics_path}")
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ def parse_args():
     script_dir = Path(__file__).parent.resolve()
     project_root = script_dir.parent  # arxiv_search/
     crawler_root = project_root.parent / "arxiv_crawler"  # ../arxiv_crawler
-    
+
     parser = argparse.ArgumentParser(
         description="Upload arXiv dataset to HuggingFace Hub",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -54,20 +54,21 @@ def parse_args():
 def load_dataset_card(dataset_name: str, include_xml: bool, card_template_path: Path) -> str:
     """
     Load and populate the dataset card template.
-    
+
     Args:
         dataset_name: HuggingFace dataset name
         include_xml: Whether XML files are included in upload
         card_template_path: Path to the dataset card template markdown file
-    
+
     Returns:
         Populated dataset card content
     """
     # Read template
     card_content = card_template_path.read_text()
-    
+
     # Prepare optional XML section
-    xml_section = """### Optional Files
+    xml_section = (
+        """### Optional Files
 - `xml_docs/*.xml.gz`: Source XML documents from arXiv (for reproducibility/inspection)
 
 #### Download XML Files
@@ -80,12 +81,15 @@ snapshot_download(
     allow_patterns=["xml_docs/*.xml.gz"]
 )
 ```
-""" if include_xml else ""
-    
+"""
+        if include_xml
+        else ""
+    )
+
     # Substitute placeholders
     card_content = card_content.replace("{DATASET_NAME}", dataset_name)
     card_content = card_content.replace("{OPTIONAL_XML_SECTION}", xml_section)
-    
+
     return card_content
 
 
@@ -145,7 +149,7 @@ def main():
         parquet_files = sorted(train_dir.glob("citation_embeddings_*.parquet"))
         arrow_files = sorted(train_dir.glob("citation_embeddings_*.arrow"))
         citation_files = parquet_files if parquet_files else arrow_files
-        
+
         print(f"Adding {len(citation_files)} train citation embedding files")
         for embed_file in citation_files:
             operations.append(
@@ -168,7 +172,7 @@ def main():
         parquet_files = sorted(test_dir.glob("citation_embeddings_*.parquet"))
         arrow_files = sorted(test_dir.glob("citation_embeddings_*.arrow"))
         citation_files = parquet_files if parquet_files else arrow_files
-        
+
         print(f"Adding {len(citation_files)} test citation embedding files")
         for embed_file in citation_files:
             operations.append(
@@ -184,9 +188,7 @@ def main():
         print(f"Found {len(xml_files)} XML files")
         for xml_file in sorted(xml_files):
             relative_path = xml_file.relative_to(xml_docs_dir.parent)
-            operations.append(
-                CommitOperationAdd(path_in_repo=str(relative_path), path_or_fileobj=str(xml_file))
-            )
+            operations.append(CommitOperationAdd(path_in_repo=str(relative_path), path_or_fileobj=str(xml_file)))
     elif args.include_xml:
         print(f"Warning: --include-xml specified but {xml_docs_dir} not found")
 

@@ -1,0 +1,35 @@
+# Default configuration for citation embedding training and evaluation
+
+data:
+  data_dir: data
+  hf_dataset_name: null  # Set to HuggingFace dataset name for auto-download
+  citations_batch_size: 10000
+  
+  # Collation settings
+  max_length: 256
+  pad_to_multiple_of: 8
+  pad_value: 0.0
+
+model:
+  hidden_size: 768
+  num_hidden_layers: 1
+  num_attention_heads: 12
+  intermediate_size: 1536
+  max_position_embeddings: 2048
+
+training:
+  batch_size: 256
+  num_workers: 6
+  num_epochs: 20
+  learning_rate: 1e-3
+  
+  # Logging
+  log_steps: 10
+  save_steps: 500
+  tensorboard_dir: runs
+
+evaluation:
+  batch_size: 256
+  num_workers: 6
+  max_batches: null  # null = evaluate all batches
+
