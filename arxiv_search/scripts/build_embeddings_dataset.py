@@ -26,8 +26,8 @@ load_dotenv("../.env")  # Disable XET
 
 import argparse
 from pathlib import Path
-from typing import Dict
 
+import numpy as np
 import polars as pl
 import sentence_transformers
 
@@ -47,7 +47,7 @@ def load_papers(papers_path: str, date_format: str = "%Y-%m-%d") -> pl.DataFrame
     return papers
 
 
-def create_arxiv_id_to_context(papers: pl.DataFrame) -> Dict[str, str]:
+def create_arxiv_id_to_context(papers: pl.DataFrame) -> dict[str, str]:
     """
     Create mapping from arxiv_id to context string (title[SEP]abstract).
 
@@ -96,7 +96,7 @@ def process_citations(papers: pl.DataFrame, valid_arxiv_ids: set) -> pl.DataFram
 
 def generate_paper_embeddings(
     papers: pl.DataFrame,
-    arxiv_id_to_context: Dict[str, str],
+    arxiv_id_to_context: dict[str, str],
     sentence_encoder: sentence_transformers.SentenceTransformer,
 ) -> pl.DataFrame:
     """
@@ -130,6 +130,47 @@ def generate_paper_embeddings(
     )
 
     return paper_embeddings
+
+
+def split_citations_by_papers(
+    citations: pl.DataFrame, papers: pl.DataFrame, test_size: float = 0.2, random_seed: int = 42
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """
+    Split citations into train/test by randomly splitting papers (citer_arxiv_id).
+
+    This splits by citing paper to test generalization to new sources/authors,
+    which is the standard approach for supervised learning evaluation.
+
+    Args:
+        citations: DataFrame containing citations
+        papers: DataFrame containing all papers
+        test_size: Fraction of papers to use for test set
+        random_seed: Random seed for reproducibility
+
+    Returns:
+        Tuple of (train_citations, test_citations)
+    """
+    rng = np.random.default_rng(random_seed)
+
+    # Get all unique citing papers that appear in citations
+    citer_papers = citations["citer_arxiv_id"].unique().to_numpy()
+
+    # Shuffle and split
+    citer_papers = rng.permutation(citer_papers)
+
+    split_idx = int(len(citer_papers) * (1 - test_size))
+    train_papers = set(citer_papers[:split_idx].tolist())
+    test_papers = set(citer_papers[split_idx:].tolist())
+
+    print(f"Split: {len(train_papers)} citing papers in train, {len(test_papers)} citing papers in test")
+
+    # Split citations based on citing paper
+    train_citations = citations.filter(pl.col("citer_arxiv_id").is_in(list(train_papers)))
+    test_citations = citations.filter(pl.col("citer_arxiv_id").is_in(list(test_papers)))
+
+    print(f"Citations split: {len(train_citations)} train, {len(test_citations)} test")
+
+    return train_citations, test_citations
 
 
 def generate_citation_embeddings_batch(
@@ -214,6 +255,16 @@ def parse_args():
 
     parser.add_argument("--date-format", type=str, default="%Y-%m-%d", help="Date format for parsing publication dates")
 
+    parser.add_argument(
+        "--test-size", type=float, default=0.0, help="Fraction of papers to use for test set (default: 0.2)"
+    )
+
+    parser.add_argument("--random-seed", type=int, default=42, help="Random seed for train/test split")
+
+    parser.add_argument(
+        "--no-split", action="store_true", help="Skip train/test split and save all data to output directory root"
+    )
+
     return parser.parse_args()
 
 
@@ -230,6 +281,9 @@ def main():
     DEVICE = args.device
     BATCH_SIZE = args.batch_size
     DATE_FORMAT = args.date_format
+    TEST_SIZE = args.test_size
+    RANDOM_SEED = args.random_seed
+    NO_SPLIT = args.no_split
 
     print(f"Loading model: {MODEL_NAME} on {DEVICE}")
     sentence_encoder = sentence_transformers.SentenceTransformer(MODEL_NAME, device=DEVICE)
@@ -245,17 +299,58 @@ def main():
     citations = process_citations(papers, set(arxiv_id_to_context.keys()))
     print(f"Processed {len(citations)} citation contexts")
 
-    citations_path = output_dir / "citations.jsonl"
-    print(f"Saving citations to {citations_path}")
-    citations.write_ndjson(str(citations_path))
-
+    # Generate paper embeddings (shared across splits)
     paper_embeddings = generate_paper_embeddings(papers, arxiv_id_to_context, sentence_encoder)
     paper_embeddings_path = output_dir / "paper_embeddings.parquet"
     print(f"Saving paper embeddings to {paper_embeddings_path}")
     paper_embeddings.write_parquet(str(paper_embeddings_path))
 
-    # Generate and save citation embeddings in batches
-    generate_citation_embeddings_batch(citations, sentence_encoder, BATCH_SIZE, output_dir)
+    if NO_SPLIT:
+        # Save without splitting
+        print("Skipping train/test split (--no-split specified)")
+        citations_path = output_dir / "citations.jsonl"
+        print(f"Saving citations to {citations_path}")
+        citations.write_ndjson(str(citations_path))
+
+        generate_citation_embeddings_batch(citations, sentence_encoder, BATCH_SIZE, output_dir)
+    else:
+        # Split citations by papers
+        print(f"Splitting citations into train/test (test_size={TEST_SIZE}, seed={RANDOM_SEED})")
+        train_citations, test_citations = split_citations_by_papers(
+            citations, papers, test_size=TEST_SIZE, random_seed=RANDOM_SEED
+        )
+
+        # Re-index each split so index starts from 0
+        train_citations = train_citations.drop("index").with_row_index()
+        test_citations = test_citations.drop("index").with_row_index()
+
+        # Create split directories
+        train_dir = output_dir / "train"
+        test_dir = output_dir / "test"
+        train_dir.mkdir(exist_ok=True)
+        test_dir.mkdir(exist_ok=True)
+
+        # Save train split
+        train_citations_path = train_dir / "citations.jsonl"
+        print(f"Saving train citations to {train_citations_path}")
+        train_citations.write_ndjson(str(train_citations_path))
+        generate_citation_embeddings_batch(train_citations, sentence_encoder, BATCH_SIZE, train_dir)
+
+        # Save test split
+        test_citations_path = test_dir / "citations.jsonl"
+        print(f"Saving test citations to {test_citations_path}")
+        test_citations.write_ndjson(str(test_citations_path))
+        generate_citation_embeddings_batch(test_citations, sentence_encoder, BATCH_SIZE, test_dir)
+
+        print("\nDataset structure created:")
+        print(f"  {output_dir}/")
+        print("    paper_embeddings.parquet (shared)")
+        print("    train/")
+        print("      citations.jsonl")
+        print("      citation_embeddings_*.arrow")
+        print("    test/")
+        print("      citations.jsonl")
+        print("      citation_embeddings_*.arrow")
 
 
 if __name__ == "__main__":

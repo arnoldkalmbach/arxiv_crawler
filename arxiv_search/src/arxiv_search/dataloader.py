@@ -3,17 +3,16 @@ import torch
 import numpy as np
 import random
 from torch.utils.data import IterableDataset, get_worker_info
-from typing import Optional
 from pathlib import Path
 
 
 class CitationEmbeddingDataset(IterableDataset):
     def __init__(
         self,
+        citations_file: Path,
+        paper_embeddings_file: Path,
+        citation_embeddings_dir: Path,
         citations_batch_size: int,
-        citations_file: Optional[Path] = None,
-        paper_embeddings_file: Optional[Path] = None,
-        citation_embeddings_dir: Optional[Path] = None,
         shuffle: bool = True,
         shuffle_shards: bool = True,
     ):

@@ -3,7 +3,7 @@ from typing import Any, Optional
 import torch
 import torch.optim as optim
 from transformers import BertConfig, BertModel
-
+from torch.utils.tensorboard import SummaryWriter
 
 from torch.nn.utils.rnn import pad_sequence
 
@@ -98,14 +98,14 @@ collate_fn = partial(
 
 
 train_ds = CitationEmbeddingDataset(
-    citations_file="data/citations.jsonl",
+    citations_file="data/train/citations.jsonl",
     paper_embeddings_file="data/paper_embeddings.parquet",
+    citation_embeddings_dir="data/train",
     citations_batch_size=10000,
-    citation_embeddings_dir="./data",
 )
-print("Created dataset")
+print("Created train dataset")
 
-batch_size = 128
+batch_size = 256
 train_loader = DataLoader(
     train_ds,
     batch_size=batch_size,
@@ -133,35 +133,53 @@ print("Created model")
 
 
 optimizer = optim.AdamW(model.parameters(), lr=1e-3)
-num_epochs = 1  # Single epoch since we have enough data
-log_steps = 1
+num_epochs = 20
+log_steps = 10
+save_steps = 500
 step = 0
 
-for epoch in range(num_epochs):
-    print(f"\nEpoch {epoch + 1}/{num_epochs}")
-    total_loss = 0
-    total_samples = 0
+# Initialize TensorBoard writer
+writer = SummaryWriter(log_dir="runs")
 
+for epoch in range(num_epochs):
     for batch in train_loader:
         optimizer.zero_grad()  # Clear gradients from previous step
 
         X = batch["inputs"].to(device)
         mask = batch["attention_mask"].to(device)
         y = batch["targets"].to(device)
+        lengths = batch["lengths"]
         preds = model(inputs_embeds=X, attention_mask=mask)
 
-        loss = -torch.cosine_similarity(preds["pooler_output"], y).sum()
+        # Compute cosine similarity for the batch
+        cossim = torch.cosine_similarity(preds["pooler_output"], y).mean()
+        loss = -cossim
 
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item()
-        total_samples += y.shape[0]
         step += 1
 
+        # Compute sequence length statistics (non-padding tokens)
+        lengths_float = lengths.float()
+        avg_seq_length = lengths_float.mean().item()
+        p5_seq_length = torch.quantile(lengths_float, 0.05).item()
+        p95_seq_length = torch.quantile(lengths_float, 0.95).item()
+
+        # Log to TensorBoard
+        writer.add_scalar("Loss/train", loss.item(), step)
+        writer.add_scalar("CosineSimilarity/train", cossim.item(), step)
+        writer.add_scalar("SequenceLength/avg", avg_seq_length, step)
+        writer.add_scalar("SequenceLength/p5", p5_seq_length, step)
+        writer.add_scalar("SequenceLength/p95", p95_seq_length, step)
+
         if step % log_steps == 0:
-            avg_loss = total_loss / total_samples
-            print(f"[Train] Step {step} Avg Cossim: {-avg_loss:.4f}")
-            # Reset running averages for next logging period
-            total_loss = 0
-            total_samples = 0
+            print(
+                f"[{step}] Cossim: {cossim.item():.4f}, Loss: {loss.item():.4f}, Avg Tokens: {avg_seq_length:.1f} (p5: {p5_seq_length:.1f}, p95: {p95_seq_length:.1f})"
+            )
+
+        if step % save_steps == 0:
+            torch.save(model.state_dict(), f"models/model_{step}.pth")
+            print(f"[{step}] Saved model to models/model_{step}.pth")
+
+writer.close()

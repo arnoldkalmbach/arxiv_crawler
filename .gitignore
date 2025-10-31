@@ -1,6 +1,8 @@
 data
 *.parquet
 *.jsonl
+*.pth
+*.tfevents*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
