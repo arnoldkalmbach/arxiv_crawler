@@ -16,6 +16,11 @@ from arxiv_search.dataloader import (
     ensure_dataset_exists,
     get_collate_fn,
 )
+from arxiv_search.iterable_coupling_dataset import (
+    IterableCouplingDataset,
+    collate_coupling_with_embeddings,
+    get_coupling_collate_fn,
+)
 
 # Model
 from arxiv_search.model import (
@@ -44,6 +49,10 @@ __all__ = [
     "collate_embeddings_with_targets",
     "ensure_dataset_exists",
     "get_collate_fn",
+    # Coupling dataset for rectified flow
+    "IterableCouplingDataset",
+    "collate_coupling_with_embeddings",
+    "get_coupling_collate_fn",
     # Model
     "create_model",
     "load_model",
