@@ -5,6 +5,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 from omegaconf import OmegaConf
+from sentence_transformers import SentenceTransformer
 
 from arxiv_search.config import Config
 from arxiv_search.dataloader import (
@@ -13,8 +14,11 @@ from arxiv_search.dataloader import (
     get_collate_fn,
 )
 from arxiv_search.model import load_model
-from arxiv_search.training import evaluate, print_metrics, save_metrics
+from arxiv_search.training import evaluate, print_metrics, save_metrics, save_examples
+from arxiv_search.inference import Inference
 
+
+# TODO: Implement retrieval metrics to see how we're doing on negatives, not just cossim of positives
 
 def parse_args():
     """Parse command line arguments."""
@@ -33,6 +37,18 @@ def parse_args():
         type=str,
         default="cuda" if torch.cuda.is_available() else "cpu",
         help="Device to use for evaluation (cuda or cpu)",
+    )
+    parser.add_argument(
+        "--general-model",
+        type=str,
+        default="sentence-transformers/allenai-specter",
+        help="Name of the general SentenceTransformer model to use",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=5,
+        help="Number of top KNN matches to retrieve for each example",
     )
     return parser.parse_args()
 
@@ -57,8 +73,9 @@ def load_config() -> Config:
         conf = schema
 
     # Merge CLI arguments (highest priority)
-    cli_conf = OmegaConf.from_cli()
-    conf = OmegaConf.merge(conf, cli_conf)
+    # TODO: This does not work properly, there are some CLI args not in the config so merging fails
+    # cli_conf = OmegaConf.from_cli()
+    # conf = OmegaConf.merge(conf, cli_conf, strict=False)
 
     return conf
 
@@ -96,6 +113,7 @@ def main():
 
     # Create test dataset
     print("Loading test dataset...")
+    papers_file = data_dir / "papers.jsonl"
     test_ds = CitationEmbeddingDataset(
         citations_file=test_citations,
         paper_embeddings_file=data_dir / "paper_embeddings.parquet",
@@ -103,6 +121,8 @@ def main():
         citations_batch_size=cfg.data.citations_batch_size,
         shuffle=False,  # Don't shuffle for evaluation
         shuffle_shards=False,
+        papers_file=papers_file if papers_file.exists() else None,
+        return_metadata=True,  # Enable metadata for saving examples
     )
 
     # Create dataloader
@@ -140,14 +160,38 @@ def main():
     )
     print("Model loaded successfully.")
 
+    # Load general model for inference
+    print(f"\nLoading general model: {args.general_model}...")
+    general_model = SentenceTransformer(args.general_model, device=args.device)
+    print("General model loaded successfully.")
+    
+    # Build KNN index
+    print("\nBuilding KNN index...")
+    paper_embeddings_file = data_dir / "paper_embeddings.parquet"
+    if not paper_embeddings_file.exists():
+        raise FileNotFoundError(f"Paper embeddings not found at {paper_embeddings_file}")
+    
+    inference = Inference(
+        general_model=general_model,
+        task_model=model,
+        max_length=cfg.data.max_length,
+        pad_to_multiple_of=cfg.data.pad_to_multiple_of,
+        device=args.device,
+    )
+    inference.build_index(paper_embeddings_file)
+    print(f"KNN index built with {len(inference.paper_embeddings)} papers.")
+
     # Run evaluation
     print("\nStarting evaluation...\n")
     metrics = evaluate(
         model=model,
         dataloader=test_loader,
         device=args.device,
+        inference=inference,
         max_batches=cfg.evaluation.max_batches,
         show_progress=True,
+        num_examples=20,  # Save 20 random examples
+        top_k=args.top_k,
     )
 
     # Print results
@@ -157,6 +201,12 @@ def main():
     metrics_path = model_path.parent / f"{model_path.stem}_eval_metrics.txt"
     save_metrics(metrics, metrics_path, model_path)
     print(f"Metrics saved to {metrics_path}")
+    
+    # Save examples to file
+    if metrics.get("examples"):
+        examples_path = model_path.parent / f"{model_path.stem}_eval_examples.txt"
+        save_examples(metrics["examples"], examples_path, model_path)
+        print(f"Examples saved to {examples_path} ({len(metrics['examples'])} examples)")
 
 
 if __name__ == "__main__":

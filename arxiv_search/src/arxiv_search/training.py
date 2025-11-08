@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from transformers import BertModel
 from tqdm import tqdm
+import polars as pl
 
 
 def train_epoch(
@@ -153,8 +154,11 @@ def evaluate(
     model: BertModel,
     dataloader: DataLoader,
     device: str,
+    inference,
     max_batches: Optional[int] = None,
     show_progress: bool = True,
+    num_examples: int = 10,
+    top_k: int = 5,
 ) -> dict:
     """
     Evaluate model on test/validation set.
@@ -163,15 +167,19 @@ def evaluate(
         model: Model to evaluate
         dataloader: DataLoader for evaluation set
         device: Device to run evaluation on
+        inference: Inference instance for KNN retrieval
         max_batches: Maximum number of batches to evaluate (None = all)
         show_progress: Whether to show progress bar
+        num_examples: Number of random examples to save with their metadata and cosine similarities
+        top_k: Number of top matches to retrieve for each example (default: 5)
 
     Returns:
-        Dictionary with evaluation metrics
+        Dictionary with evaluation metrics and examples
     """
     model.eval()
 
     all_cosine_sims = []
+    all_examples = []  # Store examples with metadata and cosine similarities
     num_samples = 0
 
     with torch.no_grad():
@@ -186,6 +194,7 @@ def evaluate(
             X = batch["inputs"].to(device)
             mask = batch["attention_mask"].to(device)
             y = batch["targets"].to(device)
+            metadata = batch.get("metadata", None)
 
             # Get predictions
             preds = model(inputs_embeds=X, attention_mask=mask)
@@ -194,6 +203,14 @@ def evaluate(
             # Compute cosine similarity per sample
             cosine_sims = torch.cosine_similarity(pred_embeddings, y, dim=1)
             all_cosine_sims.append(cosine_sims.cpu())
+
+            # Collect examples with metadata if available
+            if metadata is not None:
+                for i in range(len(metadata)):
+                    all_examples.append({
+                        "cosine_similarity": cosine_sims[i].item(),
+                        "metadata": metadata[i],
+                    })
 
             num_samples += X.size(0)
 
@@ -204,6 +221,41 @@ def evaluate(
 
     # Concatenate all cosine similarities
     all_cosine_sims = torch.cat(all_cosine_sims).numpy()
+
+    # Sample random examples
+    sampled_examples = []
+    if all_examples and num_examples > 0:
+        # Sample without replacement if we have enough examples
+        num_to_sample = min(num_examples, len(all_examples))
+        import random
+        sampled_indices = random.sample(range(len(all_examples)), num_to_sample)
+        sampled_examples = [all_examples[i] for i in sampled_indices]
+        # Sort by cosine similarity for easier reading
+        sampled_examples.sort(key=lambda x: x["cosine_similarity"], reverse=True)
+        
+        # Add KNN retrieval results for each example
+        for example in sampled_examples:
+            meta = example["metadata"]
+            # Use the cited paper as the general context and citation context as task context
+            general_context = meta.get("cited_title", "")
+            task_context = meta.get("reference_context", "")
+            
+            if general_context:
+                # Perform KNN search
+                search_contexts = [(general_context, task_context)]
+                matches_df = inference.get_matches(search_contexts, top_k=top_k)
+                matches_with_meta = pl.scan_ndjson(dataloader.dataset.papers_file).join(matches_df.lazy(), on='arxiv_id', how='inner').collect()
+                
+                # Filter to the first query's results and convert to list of dicts
+                query_matches = matches_with_meta.filter(matches_with_meta["query_index"] == 0)
+                knn_results = []
+                for row in query_matches.iter_rows(named=True):
+                    knn_results.append({
+                        "arxiv_id": row.get("arxiv_id", ""),
+                        "title": row.get("title", ""),
+                        "distance": row.get("distance", 0.0),
+                    })
+                example["knn_matches"] = knn_results
 
     # Compute metrics
     metrics = {
@@ -218,6 +270,7 @@ def evaluate(
             "p75": float(np.percentile(all_cosine_sims, 75)),
             "p95": float(np.percentile(all_cosine_sims, 95)),
         },
+        "examples": sampled_examples,
     }
 
     return metrics
@@ -265,3 +318,79 @@ def save_metrics(metrics: dict, save_path: Path, model_path: Optional[Path] = No
         cossim = metrics["cosine_similarity"]
         for key, value in cossim.items():
             f.write(f"  {key}: {value:.4f}\n")
+
+
+def save_examples(examples: list[dict], save_path: Path, model_path: Optional[Path] = None):
+    """
+    Save evaluation examples with their metadata and cosine similarities to a text file.
+
+    Args:
+        examples: List of example dictionaries from evaluate()
+        save_path: Path to save examples file
+        model_path: Optional path to model checkpoint (for reference in file)
+    """
+    with open(save_path, "w", encoding="utf-8") as f:
+        f.write("EVALUATION EXAMPLES\n")
+        f.write("=" * 80 + "\n\n")
+
+        if model_path is not None:
+            f.write(f"Model: {model_path}\n\n")
+
+        f.write(f"Number of examples: {len(examples)}\n")
+        f.write("(Sorted by cosine similarity, highest to lowest)\n\n")
+        f.write("=" * 80 + "\n\n")
+
+        for i, example in enumerate(examples, 1):
+            cosine_sim = example["cosine_similarity"]
+            meta = example["metadata"]
+
+            f.write(f"Example {i}:\n")
+            f.write(f"  Cosine Similarity: {cosine_sim:.4f}\n\n")
+            
+            f.write(f"  Citing Paper (arxiv_id: {meta['citer_arxiv_id']}):\n")
+            citer_title = meta.get("citer_title", "")
+            if citer_title:
+                f.write(f"    Title: {citer_title}\n")
+            else:
+                f.write(f"    Title: [Not available]\n")
+            f.write("\n")
+            
+            f.write(f"  Citation Context:\n")
+            context = meta.get("reference_context", "")
+            # Wrap long lines for better readability
+            if context:
+                # Simple wrapping - split by sentences or just truncate if too long
+                context_lines = context.replace(". ", ".\n    ")
+                f.write(f"    {context_lines}\n")
+            else:
+                f.write(f"    [Not available]\n")
+            f.write("\n")
+            
+            f.write(f"  Cited Paper (arxiv_id: {meta['cited_arxiv_id']}):\n")
+            cited_title = meta.get("cited_title", "")
+            if cited_title:
+                f.write(f"    Title: {cited_title}\n")
+            else:
+                f.write(f"    Title: [Not available]\n")
+            
+            # Add KNN retrieval results if available
+            knn_matches = example.get("knn_matches", [])
+            if knn_matches:
+                f.write("\n")
+                f.write(f"  KNN Search Results (Top {len(knn_matches)} matches):\n")
+                for j, match in enumerate(knn_matches, 1):
+                    match_title = match.get("title", "")
+                    match_arxiv_id = match.get("arxiv_id", "")
+                    match_distance = match.get("distance", 0.0)
+                    
+                    # Check if this is the ground truth cited paper
+                    is_ground_truth = match_arxiv_id == meta.get("cited_arxiv_id", "")
+                    gt_marker = " ★ [GROUND TRUTH]" if is_ground_truth else ""
+                    
+                    f.write(f"    {j}. Distance: {match_distance:.4f}{gt_marker}\n")
+                    f.write(f"       arxiv_id: {match_arxiv_id}\n")
+                    if match_title:
+                        f.write(f"       Title: {match_title}\n")
+                    f.write("\n")
+            
+            f.write("-" * 80 + "\n\n")
