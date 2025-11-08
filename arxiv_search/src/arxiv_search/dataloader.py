@@ -24,14 +24,19 @@ def collate_embeddings_with_targets(
     mask_dtype: torch.dtype = torch.bool,
 ):
     """
-    Collate function for batching embeddings with targets.
+    Collate function for batching embeddings with optional targets.
 
     Designed for use with CitationEmbeddingDataset.
 
     Args:
-        batch: list of (X, y) tuples where:
-            X: [seq_len, embed_dim] (float tensor or array)
-            y: target vector (same shape across samples; tensor/array/number/dict ok)
+        batch: list of tuples where each tuple can be:
+            - (X,) - just embeddings (inference)
+            - (X, y) - embeddings with targets (training)
+            - (X, y, metadata) - embeddings with targets and metadata
+            where:
+                X: [seq_len, embed_dim] (float tensor or array)
+                y: target vector (same shape across samples; tensor/array/number/dict ok) or None
+                metadata: optional dict with human-readable information
         max_length: Maximum sequence length (truncate if longer)
         pad_to_multiple_of: Pad sequences to multiple of this value
         pad_value: Value to use for padding
@@ -42,16 +47,32 @@ def collate_embeddings_with_targets(
             - inputs: FloatTensor [B, L, K] - padded input embeddings
             - attention_mask: Bool/Int Tensor [B, L] (True/1 = real token)
             - lengths: LongTensor [B] - pre-padding lengths
-            - targets: stacked y (shape depends on your dataset; typically [B, T])
+            - targets: stacked y (shape depends on your dataset; typically [B, T]) - only if targets present
+            - metadata: list of metadata dicts (if present in batch)
     """
+    # Determine batch structure from first item
+    batch_len = len(batch[0])
+    has_targets = batch_len >= 2
+    has_metadata = batch_len == 3
+    
     # Convert to tensors and apply truncation
-    Xs, Ys = [], []
-    for X, y in batch:
+    Xs, Ys, Metas = [], [], []
+    for item in batch:
+        if has_metadata:
+            X, y, meta = item
+            Metas.append(meta)
+        elif has_targets:
+            X, y = item
+        else:
+            X = item[0]
+            y = None
+            
         Xt = _to_tensor(X)  # [Li, K]
         if max_length is not None:
             Xt = Xt[:max_length]
         Xs.append(Xt)
-        Ys.append(y)
+        if has_targets:
+            Ys.append(y)
 
     # Compute lengths and target pad length
     lengths = torch.tensor([x.size(0) for x in Xs], dtype=torch.long)
@@ -85,15 +106,23 @@ def collate_embeddings_with_targets(
     attention_mask = arange < lengths.unsqueeze(1)
     attention_mask = attention_mask.to(mask_dtype)
 
-    # Stack targets robustly (supports tensors, numbers, tuples, dicts, etc.)
-    targets = default_collate([_to_tensor(y) for y in Ys])
-
-    return {
+    result = {
         "inputs": inputs,  # [B, L, K], float
         "attention_mask": attention_mask,  # [B, L], bool (or chosen dtype)
         "lengths": lengths,  # [B]
-        "targets": targets,  # e.g., [B, T] or [B] depending on your dataset
     }
+    
+    # Add targets if present
+    if has_targets:
+        # Stack targets robustly (supports tensors, numbers, tuples, dicts, etc.)
+        targets = default_collate([_to_tensor(y) for y in Ys])
+        result["targets"] = targets  # e.g., [B, T] or [B] depending on your dataset
+    
+    # Add metadata if present
+    if has_metadata:
+        result["metadata"] = Metas
+    
+    return result
 
 
 def get_collate_fn(
@@ -183,10 +212,13 @@ class CitationEmbeddingDataset(IterableDataset):
         citations_batch_size: int,
         shuffle: bool = True,
         shuffle_shards: bool = True,
+        papers_file: Optional[Path] = None,
+        return_metadata: bool = False,
     ):
         # Store file paths instead of DataFrames to avoid pickling issues with multiprocessing
         self.citations_file = citations_file
         self.paper_embeddings_file = paper_embeddings_file
+        self.papers_file = papers_file
 
         self.citations_batch_size = citations_batch_size
         self.citation_embeddings_dir = Path(citation_embeddings_dir) if citation_embeddings_dir else Path(".")
@@ -194,12 +226,18 @@ class CitationEmbeddingDataset(IterableDataset):
         # Shuffling options
         self.shuffle = shuffle  # Shuffle within shards
         self.shuffle_shards = shuffle_shards  # Shuffle shard order
+        
+        # Return metadata (for evaluation/inspection)
+        self.return_metadata = return_metadata
 
     def _load_data(self):
         """Load citations and paper embeddings data in each worker."""
         citations = pl.read_ndjson(self.citations_file)
         paper_embeddings = pl.read_parquet(self.paper_embeddings_file)
-        return citations, paper_embeddings
+        papers = None
+        if self.return_metadata and self.papers_file is not None and self.papers_file.exists():
+            papers = pl.read_ndjson(self.papers_file)
+        return citations, paper_embeddings, papers
 
     def _build_paper_embeddings_dict(self, paper_embeddings: pl.DataFrame) -> dict[str, torch.Tensor]:
         """Build a lookup dictionary mapping arxiv_id to paper embeddings."""
@@ -209,6 +247,20 @@ class CitationEmbeddingDataset(IterableDataset):
             sentence_embedding = np.array(row["sentence_embedding"], dtype=np.float32)
             paper_embeddings_dict[arxiv_id] = torch.from_numpy(sentence_embedding)
         return paper_embeddings_dict
+    
+    def _build_paper_metadata_dict(self, papers: Optional[pl.DataFrame]) -> dict[str, dict]:
+        """Build a lookup dictionary mapping arxiv_id to paper metadata (title, abstract)."""
+        if papers is None:
+            return {}
+        
+        paper_metadata_dict = {}
+        for row in papers.iter_rows(named=True):
+            arxiv_id = row["arxiv_id"]
+            paper_metadata_dict[arxiv_id] = {
+                "title": row.get("title", ""),
+                "abstract": row.get("abstract", ""),
+            }
+        return paper_metadata_dict
 
     def _get_worker_shards(self, citations: pl.DataFrame):
         """Determine which shards this worker should process."""
@@ -252,8 +304,9 @@ class CitationEmbeddingDataset(IterableDataset):
 
     def __iter__(self):
         # Worker setup
-        citations, paper_embeddings = self._load_data()
+        citations, paper_embeddings, papers = self._load_data()
         paper_embeddings_dict = self._build_paper_embeddings_dict(paper_embeddings)
+        paper_metadata_dict = self._build_paper_metadata_dict(papers) if self.return_metadata else {}
         citations_with_shard, worker_shards = self._get_worker_shards(citations)
 
         # Process each shard assigned to this worker
@@ -265,6 +318,7 @@ class CitationEmbeddingDataset(IterableDataset):
             reference_ids = shard_citations["reference_id"].to_list()
             citer_arxiv_ids = shard_citations["citer_arxiv_id"].to_list()
             cited_arxiv_ids = shard_citations["cited_arxiv_id"].to_list()
+            reference_contexts = shard_citations["reference_contexts"].to_list() if self.return_metadata else [None] * len(reference_ids)
 
             # Shuffle within shard if requested
             if self.shuffle:
@@ -273,9 +327,12 @@ class CitationEmbeddingDataset(IterableDataset):
                 reference_ids = [reference_ids[i] for i in indices]
                 citer_arxiv_ids = [citer_arxiv_ids[i] for i in indices]
                 cited_arxiv_ids = [cited_arxiv_ids[i] for i in indices]
+                reference_contexts = [reference_contexts[i] for i in indices]
 
             # Yield training samples from this shard
-            for reference_id, citer_arxiv_id, cited_arxiv_id in zip(reference_ids, citer_arxiv_ids, cited_arxiv_ids):
+            for reference_id, citer_arxiv_id, cited_arxiv_id, reference_context in zip(
+                reference_ids, citer_arxiv_ids, cited_arxiv_ids, reference_contexts
+            ):
                 # Get embeddings
                 e_citation = citation_embeddings_dict.get(reference_id)
                 e_citer = paper_embeddings_dict.get(citer_arxiv_id)
@@ -289,4 +346,16 @@ class CitationEmbeddingDataset(IterableDataset):
                 inputs_embeds = torch.vstack([e_citer, e_citation])
                 output_embeds = e_cited
 
-                yield inputs_embeds, output_embeds
+                if self.return_metadata:
+                    # Return embeddings and metadata
+                    metadata = {
+                        "reference_id": reference_id,
+                        "citer_arxiv_id": citer_arxiv_id,
+                        "cited_arxiv_id": cited_arxiv_id,
+                        "reference_context": reference_context,
+                        "citer_title": paper_metadata_dict.get(citer_arxiv_id, {}).get("title", ""),
+                        "cited_title": paper_metadata_dict.get(cited_arxiv_id, {}).get("title", ""),
+                    }
+                    yield inputs_embeds, output_embeds, metadata
+                else:
+                    yield inputs_embeds, output_embeds
