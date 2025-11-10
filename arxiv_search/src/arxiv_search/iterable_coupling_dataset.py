@@ -22,7 +22,7 @@ def _to_tensor(x):
 class IterableCouplingDataset(IterableDataset):
     """
     Wraps an IterableDataset to provide (X0, X1) pairs for rectified flow training.
-    
+
     Uses deterministic noise pairing: same sample always gets same noise via hash-based seeding.
     This allows deterministic pairing without storing noise vectors.
     """
@@ -32,10 +32,10 @@ class IterableCouplingDataset(IterableDataset):
         D1: IterableDataset,
         D0: IterableDataset | dist.Distribution | None = None,
         reflow: bool = False,
-            extract_target: Callable | None = None,
-            extract_key: Callable | None = None,
-            extract_conditioning: Callable | None = None,
-        ):
+        extract_target: Callable | None = None,
+        extract_key: Callable | None = None,
+        extract_conditioning: Callable | None = None,
+    ):
         """
         Args:
             D1: IterableDataset yielding target samples (or tuples where target is extracted)
@@ -103,9 +103,7 @@ class IterableCouplingDataset(IterableDataset):
             # Hash any hashable object
             return hash(key) % (2**31)
 
-    def _sample_noise_deterministic(
-        self, key: Hashable, shape: tuple, generator: torch.Generator
-    ) -> torch.Tensor:
+    def _sample_noise_deterministic(self, key: Hashable, shape: tuple, generator: torch.Generator) -> torch.Tensor:
         """Sample noise deterministically based on key."""
         seed = self._seed_from_key(key)
         # Set seed on the provided generator (reused across samples)
@@ -114,31 +112,20 @@ class IterableCouplingDataset(IterableDataset):
         return torch.randn(shape, generator=generator)
 
     def _sample_from_dist_deterministic(
-        self, key: Hashable, distribution: dist.Distribution, generator: torch.Generator
+        self, key: Hashable, distribution: dist.Distribution, shape: tuple
     ) -> torch.Tensor:
         """Sample from distribution deterministically based on key."""
         seed = self._seed_from_key(key)
-        # Set seed on the provided generator (reused across samples)
-        generator.manual_seed(seed)
-        # For distributions, we need to sample with the generator
-        # Note: Not all distributions support generator, so we might need to work around this
-        try:
-            return distribution.sample(generator=generator)
-        except TypeError:
-            # Fallback: use manual_seed on default generator, sample, then restore
-            # This is less ideal but works for distributions that don't support generator
-            old_state = torch.get_rng_state()
-            torch.manual_seed(seed)
-            sample = distribution.sample()
-            torch.set_rng_state(old_state)
-            return sample
+        torch.manual_seed(seed)
+        return distribution.sample(shape)
+
 
     def __iter__(self):
         """Yield (X0, X1, conditioning) tuples for rectified flow training."""
         # Create a generator once per iteration (reused for all samples in this epoch)
         # Each worker process gets its own dataset instance, so this is thread-safe
         generator = torch.Generator()
-        
+
         # Create iterator
         D1_iter = iter(self.D1)
 
@@ -153,17 +140,13 @@ class IterableCouplingDataset(IterableDataset):
                     break
 
                 X1 = self._get_target(d1_sample)
-                X0 = (
-                    d0_sample
-                    if self.extract_target is None
-                    else self.extract_target(d0_sample)
-                )
-                
+                X0 = d0_sample if self.extract_target is None else self.extract_target(d0_sample)
+
                 # Extract conditioning if available
                 conditioning = None
                 if self.extract_conditioning is not None:
                     conditioning = self.extract_conditioning(d1_sample)
-                
+
                 if conditioning is not None:
                     yield X0, X1, conditioning
                 else:
@@ -179,7 +162,7 @@ class IterableCouplingDataset(IterableDataset):
                     X0 = self._sample_noise_deterministic(key, X1.shape, generator)
                 elif isinstance(self.D0, dist.Distribution):
                     # Sample from provided distribution deterministically
-                    X0 = self._sample_from_dist_deterministic(key, self.D0, generator)
+                    X0 = self._sample_from_dist_deterministic(key, self.D0, X1.shape)
                 # Disabled in init
                 # elif isinstance(self.D0, IterableDataset):
                 else:
@@ -189,7 +172,6 @@ class IterableCouplingDataset(IterableDataset):
                 conditioning = None
                 if self.extract_conditioning is not None:
                     conditioning = self.extract_conditioning(d1_sample)
-                
                 if conditioning is not None:
                     yield X0, X1, conditioning
                 else:
@@ -199,7 +181,7 @@ class IterableCouplingDataset(IterableDataset):
 def collate_batch_elements(batch_elements):
     """
     Collate a list of batch elements (tensors, tuples, dicts, etc.).
-    
+
     This is adapted from rectified-flow's coupling_collate_fn to handle
     nested structures.
     """
@@ -229,10 +211,10 @@ def collate_coupling_with_embeddings(
 ):
     """
     Collate function for batching (X0, X1, inputs_embeds) tuples from IterableCouplingDataset.
-    
+
     X0 and X1 are vectors [embed_dim] and are just stacked.
     inputs_embeds is a sequence [seq_len, embed_dim] and is padded with attention masks.
-    
+
     Args:
         batch: list of tuples from IterableCouplingDataset:
             - (X0, X1) if no conditioning
@@ -241,7 +223,7 @@ def collate_coupling_with_embeddings(
         pad_to_multiple_of: Pad inputs_embeds to multiple of this value
         pad_value: Value to use for padding
         mask_dtype: Data type for attention mask
-    
+
     Returns:
         Dictionary containing:
             - X0: FloatTensor [B, embed_dim] - batched X0 (noise vectors)
@@ -253,40 +235,40 @@ def collate_coupling_with_embeddings(
     # Determine batch structure
     batch_len = len(batch[0])
     has_conditioning = batch_len == 3
-    
+
     if has_conditioning:
         X0_list, X1_list, inputs_embeds_list = zip(*batch)
     else:
         X0_list, X1_list = zip(*batch)
         inputs_embeds_list = None
-    
+
     # Convert to tensors
     X0_tensors = [_to_tensor(x) for x in X0_list]
     X1_tensors = [_to_tensor(x) for x in X1_list]
-    
+
     # X0 and X1 are vectors, just stack them
     result = {
         "X0": torch.stack(X0_tensors, dim=0),  # [B, embed_dim]
         "X1": torch.stack(X1_tensors, dim=0),  # [B, embed_dim]
     }
-    
+
     # Handle inputs_embeds (conditioning) if present
     if has_conditioning and inputs_embeds_list is not None:
         inputs_embeds_tensors = [_to_tensor(x) for x in inputs_embeds_list]
-        
+
         # Apply truncation
         if max_length is not None:
             inputs_embeds_tensors = [x[:max_length] for x in inputs_embeds_tensors]
-        
+
         # Compute lengths
         lengths = torch.tensor([x.size(0) for x in inputs_embeds_tensors], dtype=torch.long)
-        
+
         # Pad sequences
         if pad_to_multiple_of is not None:
             max_len = int(lengths.max().item())
             if max_len % pad_to_multiple_of != 0:
                 max_len = ((max_len + pad_to_multiple_of - 1) // pad_to_multiple_of) * pad_to_multiple_of
-            
+
             K = inputs_embeds_tensors[0].size(1)
             padded_list = []
             for x in inputs_embeds_tensors:
@@ -298,20 +280,18 @@ def collate_coupling_with_embeddings(
                     padded_list.append(x)
             inputs = torch.stack(padded_list, dim=0)  # [B, L, K]
         else:
-            inputs = pad_sequence(
-                inputs_embeds_tensors, batch_first=True, padding_value=pad_value
-            )  # [B, L, K]
-        
+            inputs = pad_sequence(inputs_embeds_tensors, batch_first=True, padding_value=pad_value)  # [B, L, K]
+
         # Build attention mask
         L = inputs.size(1)
         arange = torch.arange(L).unsqueeze(0)  # [1, L]
         attention_mask = arange < lengths.unsqueeze(1)
         attention_mask = attention_mask.to(mask_dtype)
-        
+
         result["inputs"] = inputs
         result["attention_mask"] = attention_mask
         result["lengths"] = lengths
-    
+
     return result
 
 
@@ -323,13 +303,13 @@ def get_coupling_collate_fn(
 ):
     """
     Get a collate function configured for IterableCouplingDataset.
-    
+
     Args:
         max_length: Maximum sequence length for inputs_embeds
         pad_to_multiple_of: Pad inputs_embeds to multiple of this value
         pad_value: Padding value
         mask_dtype: Data type for attention mask
-    
+
     Returns:
         Partial function configured for collating coupling pairs
     """
@@ -340,4 +320,3 @@ def get_coupling_collate_fn(
         pad_value=pad_value,
         mask_dtype=mask_dtype,
     )
-

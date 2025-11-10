@@ -5,14 +5,12 @@ from typing import Optional
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from rectified_flow.model import RectifiedFlow
-from tqdm import tqdm
-import polars as pl
+from rectified_flow import RectifiedFlow
 
 
 def train_epoch(
     rectified_flow: RectifiedFlow,
-    dataloader: DataLoader, # wraps IterableCouplingDataset
+    dataloader: DataLoader,  # wraps IterableCouplingDataset
     optimizer: torch.optim.Optimizer,
     device: str,
     writer: Optional[SummaryWriter] = None,
@@ -38,7 +36,7 @@ def train_epoch(
     Returns:
         Final step number after this epoch
     """
-    rectified_flow.train()
+    rectified_flow.velocity_field.train()
     step = start_step
 
     if save_steps > 0 and save_dir is not None:
@@ -52,7 +50,7 @@ def train_epoch(
         y = batch["inputs"].to(device)
         y_attention_mask = batch["attention_mask"].to(device)
 
-        t = rectified_flow.sample_train_time(X1.shape[0])
+        t = rectified_flow.sample_train_time(X1.shape[0], expand_dim=False)
         time_weights = rectified_flow.train_time_weight(t)
 
         Xt, dot_Xt_t = rectified_flow.get_interpolation(X0, X1, t)
@@ -60,7 +58,7 @@ def train_epoch(
         # Expand Xt along the conditioning sequence length dimension
         # TODO: Not sure if we can get away with this hack, or if we need to sample Xt for each time step.
         Xt = Xt.unsqueeze(1).expand(-1, y.size(1), -1)
-        v_t = rectified_flow.get_velocity(Xt, t, y=y, y_attention_mask=y_attention_mask)
+        v_t = rectified_flow.get_velocity(Xt, t, y=y, attention_mask=y_attention_mask)
 
         loss = rectified_flow.criterion(
             v_t=v_t,
@@ -70,20 +68,22 @@ def train_epoch(
             time_weights=time_weights,
         )
 
+        loss.backward()
+        optimizer.step()
+        step += 1
+
         # Log to TensorBoard
         if writer is not None:
             writer.add_scalar("Loss/train", loss.item(), step)
 
         # Console logging
         if step % log_steps == 0:
-            print(
-                f"[{step}] Loss: {loss.item():.4f}"
-            )
+            print(f"[{step}] Loss: {loss.item():.4f}")
 
         # Save checkpoint
         if save_steps > 0 and step % save_steps == 0 and save_dir is not None:
             model_path = save_dir / f"model_{step}.pth"
-            torch.save(rectified_flow.state_dict(), model_path)
+            torch.save(rectified_flow.velocity_field.state_dict(), model_path)
             print(f"[{step}] Saved model to {model_path}")
 
     return step
