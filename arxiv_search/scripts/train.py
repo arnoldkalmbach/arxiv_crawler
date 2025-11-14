@@ -2,10 +2,11 @@
 
 import argparse
 from pathlib import Path
+
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
 from omegaconf import OmegaConf
+from torch.utils.data import DataLoader
 
 from arxiv_search.config import load_config
 from arxiv_search.dataloader import (
