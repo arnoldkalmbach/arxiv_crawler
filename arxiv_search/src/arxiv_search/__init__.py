@@ -4,9 +4,9 @@
 from arxiv_search.config import (
     Config,
     DataConfig,
+    EvaluationConfig,
     ModelConfig,
     TrainingConfig,
-    EvaluationConfig,
 )
 
 # Data loading
@@ -25,11 +25,11 @@ from arxiv_search.model import (
 
 # Training and evaluation
 from arxiv_search.training import (
-    train,
-    train_epoch,
     evaluate,
     print_metrics,
     save_metrics,
+    train,
+    train_epoch,
 )
 
 __all__ = [

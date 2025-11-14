@@ -2,18 +2,23 @@
 
 import argparse
 from pathlib import Path
-import torch
-from torch.utils.data import DataLoader
-from omegaconf import OmegaConf
 
-from arxiv_search.config import Config
+import torch
+from omegaconf import OmegaConf
+from sentence_transformers import SentenceTransformer
+from torch.utils.data import DataLoader
+
+from arxiv_search.config import load_config
 from arxiv_search.dataloader import (
     CitationEmbeddingDataset,
     ensure_dataset_exists,
     get_collate_fn,
 )
+from arxiv_search.inference import Inference
 from arxiv_search.model import load_model
-from arxiv_search.training import evaluate, print_metrics, save_metrics
+from arxiv_search.training import evaluate, print_metrics, save_examples, save_metrics
+
+# TODO: Implement retrieval metrics to see how we're doing on negatives, not just cossim of positives
 
 
 def parse_args():
@@ -34,42 +39,24 @@ def parse_args():
         default="cuda" if torch.cuda.is_available() else "cpu",
         help="Device to use for evaluation (cuda or cpu)",
     )
-    return parser.parse_args()
-
-
-def load_config() -> Config:
-    """
-    Load configuration from YAML file and merge with CLI overrides.
-
-    Returns:
-        Merged configuration object
-    """
-    # Load structured config (provides schema and defaults)
-    schema = OmegaConf.structured(Config)
-
-    # Load from default YAML file
-    config_file = Path("configs/default.yaml")
-    if config_file.exists():
-        yaml_conf = OmegaConf.load(config_file)
-        conf = OmegaConf.merge(schema, yaml_conf)
-    else:
-        print(f"Warning: Config file {config_file} not found, using defaults")
-        conf = schema
-
-    # Merge CLI arguments (highest priority)
-    cli_conf = OmegaConf.from_cli()
-    conf = OmegaConf.merge(conf, cli_conf)
-
-    return conf
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=5,
+        help="Number of top KNN matches to retrieve for each example",
+    )
+    # Use parse_known_args to separate normal args from config overrides
+    args, unknown = parser.parse_known_args()
+    return args, unknown
 
 
 def main():
     """Main evaluation function."""
-    # Parse required arguments
-    args = parse_args()
+    # Parse required arguments and collect config overrides
+    args, unknown = parse_args()
 
-    # Load configuration
-    cfg = load_config()
+    # Load configuration (merges default.yaml with CLI config overrides)
+    cfg = load_config(cli_overrides=unknown)
 
     # Convert paths
     data_dir = Path(cfg.data.data_dir)
@@ -96,6 +83,7 @@ def main():
 
     # Create test dataset
     print("Loading test dataset...")
+    papers_file = data_dir / "papers.jsonl"
     test_ds = CitationEmbeddingDataset(
         citations_file=test_citations,
         paper_embeddings_file=data_dir / "paper_embeddings.parquet",
@@ -103,6 +91,8 @@ def main():
         citations_batch_size=cfg.data.citations_batch_size,
         shuffle=False,  # Don't shuffle for evaluation
         shuffle_shards=False,
+        papers_file=papers_file if papers_file.exists() else None,
+        return_metadata=True,  # Enable metadata for saving examples
     )
 
     # Create dataloader
@@ -129,7 +119,7 @@ def main():
     if not model_path.exists():
         raise FileNotFoundError(f"Model checkpoint not found at {model_path}")
 
-    model = load_model(
+    task_model = load_model(
         str(model_path),
         device=args.device,
         hidden_size=cfg.model.hidden_size,
@@ -140,14 +130,38 @@ def main():
     )
     print("Model loaded successfully.")
 
+    # Load general model for inference (must match the model used to build embeddings)
+    print(f"\nLoading general model: {cfg.data.basemodel_name}...")
+    general_model = SentenceTransformer(cfg.data.basemodel_name, device=args.device)
+    print("General model loaded successfully.")
+
+    # Build KNN index
+    print("\nBuilding KNN index...")
+    paper_embeddings_file = data_dir / "paper_embeddings.parquet"
+    if not paper_embeddings_file.exists():
+        raise FileNotFoundError(f"Paper embeddings not found at {paper_embeddings_file}")
+
+    inference = Inference(
+        general_model=general_model,
+        task_model=task_model,
+        max_length=cfg.data.max_length,
+        pad_to_multiple_of=cfg.data.pad_to_multiple_of,
+        device=args.device,
+    )
+    inference.build_index(paper_embeddings_file)
+    print(f"KNN index built with {len(inference.paper_embeddings)} papers.")
+
     # Run evaluation
     print("\nStarting evaluation...\n")
     metrics = evaluate(
-        model=model,
+        model=task_model,
         dataloader=test_loader,
         device=args.device,
+        inference=inference,
         max_batches=cfg.evaluation.max_batches,
         show_progress=True,
+        num_examples=20,  # Save 20 random examples
+        top_k=args.top_k,
     )
 
     # Print results
@@ -157,6 +171,12 @@ def main():
     metrics_path = model_path.parent / f"{model_path.stem}_eval_metrics.txt"
     save_metrics(metrics, metrics_path, model_path)
     print(f"Metrics saved to {metrics_path}")
+
+    # Save examples to file
+    if metrics.get("examples"):
+        examples_path = model_path.parent / f"{model_path.stem}_eval_examples.txt"
+        save_examples(metrics["examples"], examples_path, model_path)
+        print(f"Examples saved to {examples_path} ({len(metrics['examples'])} examples)")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,15 @@
+{
+  // Use uvx-managed Ruff
+  "ruff.path": ["uvx", "ruff"],
+
+  // Python-specific settings: format, fix, and organize imports on save
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  }
+}
+

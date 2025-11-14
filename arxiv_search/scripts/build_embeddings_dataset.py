@@ -24,12 +24,14 @@ from dotenv import load_dotenv
 
 load_dotenv("../.env")  # Disable XET
 
-import argparse
-from pathlib import Path
+import argparse  # noqa: E402
+from pathlib import Path  # noqa: E402
 
-import numpy as np
-import polars as pl
-import sentence_transformers
+import numpy as np  # noqa: E402
+import polars as pl  # noqa: E402
+import sentence_transformers  # noqa: E402
+
+from arxiv_search.config import load_config  # noqa: E402
 
 
 def load_papers(papers_path: str, date_format: str = "%Y-%m-%d") -> pl.DataFrame:
@@ -241,55 +243,36 @@ def parse_args():
     parser.add_argument("--output-dir", type=str, default=".", help="Directory to save output files")
 
     parser.add_argument(
-        "--model-name",
-        type=str,
-        default="sentence-transformers/allenai-specter",
-        help="Name of the sentence transformer model to use",
-    )
-
-    parser.add_argument(
         "--device", type=str, default="cuda", choices=["cuda", "cpu", "mps"], help="Device to run the model on"
     )
-
-    parser.add_argument("--batch-size", type=int, default=1000, help="Batch size for processing citation embeddings")
-
-    parser.add_argument("--date-format", type=str, default="%Y-%m-%d", help="Date format for parsing publication dates")
-
-    parser.add_argument(
-        "--test-size", type=float, default=0.0, help="Fraction of papers to use for test set (default: 0.2)"
-    )
-
-    parser.add_argument("--random-seed", type=int, default=42, help="Random seed for train/test split")
 
     parser.add_argument(
         "--no-split", action="store_true", help="Skip train/test split and save all data to output directory root"
     )
 
-    return parser.parse_args()
+    # Use parse_known_args to separate normal args from config overrides
+    args, unknown = parser.parse_known_args()
+    return args, unknown
 
 
 def main():
     """Main function to orchestrate the embedding generation process."""
-    args = parse_args()
+    # Parse required arguments and collect config overrides
+    args, unknown = parse_args()
+
+    # Load configuration (merges default.yaml with CLI config overrides)
+    cfg = load_config(cli_overrides=unknown)
 
     # Convert paths
     input_papers = args.input_papers
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    MODEL_NAME = args.model_name
-    DEVICE = args.device
-    BATCH_SIZE = args.batch_size
-    DATE_FORMAT = args.date_format
-    TEST_SIZE = args.test_size
-    RANDOM_SEED = args.random_seed
-    NO_SPLIT = args.no_split
-
-    print(f"Loading model: {MODEL_NAME} on {DEVICE}")
-    sentence_encoder = sentence_transformers.SentenceTransformer(MODEL_NAME, device=DEVICE)
+    print(f"Loading model: {cfg.data.basemodel_name} on {args.device}")
+    sentence_encoder = sentence_transformers.SentenceTransformer(cfg.data.basemodel_name, device=args.device)
 
     print(f"Loading papers from {input_papers}")
-    papers = load_papers(input_papers, DATE_FORMAT)
+    papers = load_papers(input_papers)
     print(f"Loaded {len(papers)} papers")
 
     print("Creating arxiv_id to context mapping...")
@@ -305,19 +288,19 @@ def main():
     print(f"Saving paper embeddings to {paper_embeddings_path}")
     paper_embeddings.write_parquet(str(paper_embeddings_path))
 
-    if NO_SPLIT:
+    if args.no_split:
         # Save without splitting
         print("Skipping train/test split (--no-split specified)")
         citations_path = output_dir / "citations.jsonl"
         print(f"Saving citations to {citations_path}")
         citations.write_ndjson(str(citations_path))
 
-        generate_citation_embeddings_batch(citations, sentence_encoder, BATCH_SIZE, output_dir)
+        generate_citation_embeddings_batch(citations, sentence_encoder, cfg.data.embedding_batch_size, output_dir)
     else:
         # Split citations by papers
-        print(f"Splitting citations into train/test (test_size={TEST_SIZE}, seed={RANDOM_SEED})")
+        print(f"Splitting citations into train/test (test_size={cfg.data.test_size}, seed={cfg.data.random_seed})")
         train_citations, test_citations = split_citations_by_papers(
-            citations, papers, test_size=TEST_SIZE, random_seed=RANDOM_SEED
+            citations, papers, test_size=cfg.data.test_size, random_seed=cfg.data.random_seed
         )
 
         # Re-index each split so index starts from 0
@@ -334,13 +317,13 @@ def main():
         train_citations_path = train_dir / "citations.jsonl"
         print(f"Saving train citations to {train_citations_path}")
         train_citations.write_ndjson(str(train_citations_path))
-        generate_citation_embeddings_batch(train_citations, sentence_encoder, BATCH_SIZE, train_dir)
+        generate_citation_embeddings_batch(train_citations, sentence_encoder, cfg.data.embedding_batch_size, train_dir)
 
         # Save test split
         test_citations_path = test_dir / "citations.jsonl"
         print(f"Saving test citations to {test_citations_path}")
         test_citations.write_ndjson(str(test_citations_path))
-        generate_citation_embeddings_batch(test_citations, sentence_encoder, BATCH_SIZE, test_dir)
+        generate_citation_embeddings_batch(test_citations, sentence_encoder, cfg.data.embedding_batch_size, test_dir)
 
         print("\nDataset structure created:")
         print(f"  {output_dir}/")
