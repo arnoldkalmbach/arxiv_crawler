@@ -80,10 +80,14 @@ class RectflowConfig:
 class RectflowTrainingConfig:
     """Rectified flow training configuration."""
 
-    batch_size: int = 256
+    batch_size: int = 128
     num_workers: int = 6
-    num_epochs: int = 20
-    learning_rate: float = 1e-3
+    num_epochs: int = 100
+    learning_rate: float = 2e-4
+
+    # Time weighting
+    train_time_weight: str = "linear"  # "linear" or "exponential"
+    train_time_distribution: str = "lognormal"  # "uniform" or "lognormal"
 
     # Logging
     log_steps: int = 10

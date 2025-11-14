@@ -3,10 +3,13 @@
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 import torch
 from rectified_flow import RectifiedFlow
+from rectified_flow.samplers import SDESampler
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 
 def train_epoch(
@@ -56,9 +59,6 @@ def train_epoch(
 
         Xt, dot_Xt_t = rectified_flow.get_interpolation(X0, X1, t)
 
-        # Expand Xt along the conditioning sequence length dimension
-        # TODO: Not sure if we can get away with this hack, or if we need to sample Xt for each time step.
-        Xt = Xt.unsqueeze(1).expand(-1, y.size(1), -1)
         v_t = rectified_flow.get_velocity(Xt, t, y=y, attention_mask=y_attention_mask)
 
         loss = rectified_flow.criterion(
@@ -141,3 +141,91 @@ def train(
         writer.close()
 
     return rectified_flow
+
+
+def evaluate(
+    rectified_flow: RectifiedFlow,
+    dataloader: DataLoader,
+    device: str,
+    max_batches: Optional[int] = None,
+    show_progress: bool = True,
+    num_examples: int = 10,
+    top_k: int = 5,
+) -> dict:
+    """
+    Evaluate model on test/validation set.
+
+    Args:
+        rectified_flow: RectifiedFlow model to evaluate
+        dataloader: DataLoader for evaluation set
+        device: Device to run evaluation on
+        max_batches: Maximum number of batches to evaluate (None = all)
+        show_progress: Whether to show progress bar
+        num_examples: Number of random examples to save with their metadata and cosine similarities
+        top_k: Number of top matches to retrieve for each example (default: 5)
+
+    Returns:
+        Dictionary with evaluation metrics and examples
+    """
+    rectified_flow.velocity_field.eval()
+    sde_sampler = SDESampler(rectified_flow=rectified_flow)
+
+    all_cosine_sims = []
+    num_samples = 0
+
+    with torch.no_grad():
+        iterator = tqdm(dataloader, desc="Evaluating", unit="batch") if show_progress else dataloader
+
+        for batch_idx, batch in enumerate(iterator):
+            # Stop if we've reached max_batches
+            if max_batches is not None and batch_idx >= max_batches:
+                break
+
+            # Move batch to device
+            # For coupling dataset, X1 is the target, and we use X0 as the starting point
+            X0 = batch["X0"].to(device)  # Noise vectors
+            X1 = batch["X1"].to(device)  # Target vectors
+            y = batch["inputs"].to(device)  # Conditioning embeddings
+            y_attention_mask = batch["attention_mask"].to(device)
+
+            sde_sampler.sample_loop(num_steps=100, x_0=X0, y=y, attention_mask=y_attention_mask)
+
+            traj = sde_sampler.trajectories
+
+            pred_embeddings = traj[-1]
+
+            # Compute cosine similarity per sample (compare predictions to targets X1)
+            cosine_sims = torch.cosine_similarity(pred_embeddings, X1, dim=1)
+            all_cosine_sims.append(cosine_sims.cpu())
+
+            # Collect examples with metadata if available
+            # Note: metadata would need to be passed through the coupling dataset
+            # For now, we'll skip metadata collection for rectflow evaluation
+            # TODO: Add metadata support to coupling dataset collate function
+
+            num_samples += y.size(0)
+
+            # Update progress bar
+            if show_progress and hasattr(iterator, "set_postfix"):
+                current_mean = torch.cat(all_cosine_sims).mean().item()
+                iterator.set_postfix({"mean_cossim": f"{current_mean:.4f}", "samples": num_samples})
+
+    # Concatenate all cosine similarities
+    all_cosine_sims = torch.cat(all_cosine_sims).numpy()
+
+    # Compute metrics
+    metrics = {
+        "num_samples": num_samples,
+        "cosine_similarity": {
+            "mean": float(np.mean(all_cosine_sims)),
+            "median": float(np.median(all_cosine_sims)),
+            "std": float(np.std(all_cosine_sims)),
+            "min": float(np.min(all_cosine_sims)),
+            "max": float(np.max(all_cosine_sims)),
+            "p25": float(np.percentile(all_cosine_sims, 25)),
+            "p75": float(np.percentile(all_cosine_sims, 75)),
+            "p95": float(np.percentile(all_cosine_sims, 95)),
+        },
+    }
+
+    return metrics

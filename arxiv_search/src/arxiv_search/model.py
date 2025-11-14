@@ -1,11 +1,16 @@
 """Model architecture for citation embedding."""
 
+import math
+from typing import Optional, Type
+
 import torch
 import torch.nn as nn
-from typing import Optional, Type
+from omegaconf import DictConfig
+from rectified_flow import RectifiedFlow
 from timm.models.vision_transformer import Attention
-import math
 from transformers import BertConfig, BertModel
+
+from arxiv_search.config import ModelConfig, RectflowConfig
 
 
 def create_model(
@@ -63,6 +68,83 @@ def load_model(checkpoint_path: str, device: str = "cuda", **model_kwargs) -> Be
     model = create_model(device=device, **model_kwargs)
     model.load_state_dict(torch.load(checkpoint_path, map_location=device))
     return model
+
+
+def load_rectflow_model(
+    velocity_field_checkpoint: str,
+    rectflow_config: DictConfig | RectflowConfig,
+    model_config: DictConfig | ModelConfig,
+    max_length: int,
+    device: str = "cuda",
+    conditioning_checkpoint: Optional[str] = None,
+) -> RectifiedFlow:
+    """
+    Load a trained RectifiedFlow model from checkpoint.
+
+    Args:
+        velocity_field_checkpoint: Path to velocity field checkpoint (.pth file)
+        rectflow_config: RectflowConfig object or DictConfig with rectflow settings
+        model_config: ModelConfig object or DictConfig with model architecture settings
+        max_length: Maximum sequence length (used for data_shape)
+        device: Device to load model on
+        conditioning_checkpoint: Optional path to conditioning model checkpoint.
+                                If not provided, uses rectflow_config.conditioning_checkpoint
+
+    Returns:
+        Loaded RectifiedFlow instance
+    """
+    # Extract conditioning checkpoint path
+    if conditioning_checkpoint is None:
+        conditioning_checkpoint = rectflow_config.conditioning_checkpoint
+
+    # Extract rectflow config values
+    velocity_field_type = rectflow_config.velocity_field_type
+    num_blocks = rectflow_config.num_blocks
+    num_heads = rectflow_config.num_heads
+    mlp_ratio = rectflow_config.mlp_ratio
+
+    # Extract model config values for conditioning model
+    model_kwargs = {
+        "hidden_size": model_config.hidden_size,
+        "num_hidden_layers": model_config.num_hidden_layers,
+        "num_attention_heads": model_config.num_attention_heads,
+        "intermediate_size": model_config.intermediate_size,
+        "max_position_embeddings": model_config.max_position_embeddings,
+    }
+
+    # Load conditioning model
+    conditioning_model = load_model(conditioning_checkpoint, device=device, **model_kwargs)
+    conditioning_model.requires_grad_(False)
+
+    # Create velocity field based on type
+    if velocity_field_type == "DiT":
+        velocity_model = VelocityField1dDiT(
+            num_blocks=num_blocks,
+            conditioning_model=conditioning_model,
+            num_heads=num_heads,
+            mlp_ratio=mlp_ratio,
+        ).to(device)
+    elif velocity_field_type == "CrossAttention":
+        velocity_model = VelocityField1dCrossAttention(
+            num_blocks=num_blocks,
+            conditioning_model=conditioning_model,
+            num_heads=num_heads,
+            mlp_ratio=mlp_ratio,
+        ).to(device)
+    else:
+        raise ValueError(f"Unknown velocity_field_type: {velocity_field_type}. Must be 'DiT' or 'CrossAttention'")
+
+    # Load velocity field weights
+    velocity_model.load_state_dict(torch.load(velocity_field_checkpoint, map_location=device))
+
+    # Create RectifiedFlow
+    rectified_flow = RectifiedFlow(
+        data_shape=(conditioning_model.config.hidden_size,),
+        velocity_field=velocity_model,
+        device=device,
+    )
+
+    return rectified_flow
 
 
 class MLP(nn.Module):
@@ -193,11 +275,12 @@ class VelocityField1dCrossAttention(nn.Module):
 
     def forward(
         self,
-        x,  # batch, seq_len, hidden_size
+        x,  # batch, hidden_size
         t,  # batch
         y,  # batch, seq_len, hidden_size
         attention_mask,  # batch, seq_len
     ):
+        x = x.unsqueeze(1).expand(-1, y.size(1), -1)  # -> batch, seq_len, hidden_size
         _, seq_len, _ = x.shape
         position_ids = self.position_ids[:, :seq_len]
         position_embeddings = self.position_embeddings(position_ids)
@@ -229,11 +312,12 @@ class VelocityField1dDiT(nn.Module):
 
     def forward(
         self,
-        x,  # batch, seq_len, hidden_size
+        x,  # batch, hidden_size
         t,  # batch
         y,  # batch, seq_len, hidden_size
         attention_mask,  # batch, seq_len
     ):
+        x = x.unsqueeze(1).expand(-1, y.size(1), -1)  # -> batch, seq_len, hidden_size
         _, seq_len, _ = x.shape
         position_ids = self.position_ids[:, :seq_len]
         position_embeddings = self.position_embeddings(position_ids)

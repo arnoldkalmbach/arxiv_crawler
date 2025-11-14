@@ -137,7 +137,9 @@ def main():
         )
 
     rectified_flow = RectifiedFlow(
-        data_shape=(cfg.data.max_length, conditioning_model.config.hidden_size),
+        data_shape=(conditioning_model.config.hidden_size,),
+        train_time_weight=cfg.rectflow_training.train_time_weight,
+        train_time_distribution=cfg.rectflow_training.train_time_distribution,
         velocity_field=velocity_model,
         device=args.device,
     )

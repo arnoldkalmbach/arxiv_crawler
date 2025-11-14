@@ -50,10 +50,14 @@ rectflow:
   conditioning_checkpoint: "models/model_500.pth"  # Path to conditioning model checkpoint
 
 rectflow_training:
-  batch_size: 256
+  batch_size: 128
   num_workers: 6
-  num_epochs: 20
-  learning_rate: 1e-3
+  num_epochs: 100
+  learning_rate: 2e-4
+  
+  # Time weighting
+  train_time_weight: "uniform"  # "uniform"
+  train_time_distribution: "lognormal"  # "uniform" or "lognormal"
   
   # Logging
   log_steps: 10

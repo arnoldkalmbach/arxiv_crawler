@@ -26,6 +26,7 @@ from arxiv_search.iterable_coupling_dataset import (
 from arxiv_search.model import (
     create_model,
     load_model,
+    load_rectflow_model,
 )
 
 # Training and evaluation
@@ -56,6 +57,7 @@ __all__ = [
     # Model
     "create_model",
     "load_model",
+    "load_rectflow_model",
     # Training and evaluation
     "train",
     "train_epoch",

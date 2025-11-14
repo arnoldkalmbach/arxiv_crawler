@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 import torch
+import torch.distributions as dist
 from omegaconf import OmegaConf
 from sentence_transformers import SentenceTransformer
 from torch.utils.data import DataLoader
@@ -15,8 +16,10 @@ from arxiv_search.dataloader import (
     get_collate_fn,
 )
 from arxiv_search.inference import Inference
-from arxiv_search.model import load_model
+from arxiv_search.iterable_coupling_dataset import IterableCouplingDataset, get_coupling_collate_fn
+from arxiv_search.model import load_model, load_rectflow_model
 from arxiv_search.training import evaluate, print_metrics, save_examples, save_metrics
+from arxiv_search.training_rectflow import evaluate as evaluate_rectflow
 
 # TODO: Implement retrieval metrics to see how we're doing on negatives, not just cossim of positives
 
@@ -45,6 +48,19 @@ def parse_args():
         default=5,
         help="Number of top KNN matches to retrieve for each example",
     )
+    parser.add_argument(
+        "--model-type",
+        type=str,
+        choices=["direct", "rectflow"],
+        required=True,
+        help="Type of model: 'direct' (BERT) or 'rectflow' (RectifiedFlow)",
+    )
+    parser.add_argument(
+        "--conditioning-checkpoint",
+        type=str,
+        default=None,
+        help="Path to conditioning model checkpoint for rectflow models (overrides config)",
+    )
     # Use parse_known_args to separate normal args from config overrides
     args, unknown = parser.parse_known_args()
     return args, unknown
@@ -61,12 +77,14 @@ def main():
     # Convert paths
     data_dir = Path(cfg.data.data_dir)
     model_path = Path(args.model_path)
+    model_type = args.model_type
 
     # Print configuration
     print("=" * 60)
     print("Evaluation Configuration")
     print("=" * 60)
     print(f"Model path: {model_path}")
+    print(f"Model type: {model_type}")
     print(f"Device: {args.device}")
     print()
     print(OmegaConf.to_yaml(cfg))
@@ -81,28 +99,55 @@ def main():
     if not test_citations.exists():
         raise FileNotFoundError(f"Test split not found at {test_citations}. Please ensure the test split is available.")
 
-    # Create test dataset
+    # Create test dataset based on model type
     print("Loading test dataset...")
     papers_file = data_dir / "papers.jsonl"
-    test_ds = CitationEmbeddingDataset(
-        citations_file=test_citations,
-        paper_embeddings_file=data_dir / "paper_embeddings.parquet",
-        citation_embeddings_dir=data_dir / "test",
-        citations_batch_size=cfg.data.citations_batch_size,
-        shuffle=False,  # Don't shuffle for evaluation
-        shuffle_shards=False,
-        papers_file=papers_file if papers_file.exists() else None,
-        return_metadata=True,  # Enable metadata for saving examples
-    )
+
+    if model_type == "rectflow":
+        # For rectflow, wrap in IterableCouplingDataset
+        citation_ds = CitationEmbeddingDataset(
+            citations_file=test_citations,
+            paper_embeddings_file=data_dir / "paper_embeddings.parquet",
+            citation_embeddings_dir=data_dir / "test",
+            citations_batch_size=cfg.data.citations_batch_size,
+            shuffle=False,  # Don't shuffle for evaluation
+            shuffle_shards=False,
+            papers_file=papers_file if papers_file.exists() else None,
+            return_metadata=True,  # Enable metadata for saving examples
+        )
+        test_ds = IterableCouplingDataset(
+            D1=citation_ds,
+            D0=dist.Normal(loc=0.0, scale=1.0),
+            extract_target=lambda x: x[1],
+            extract_key=lambda x: x[2]["reference_id"],
+            extract_conditioning=lambda x: x[0],
+        )
+        collate_fn = get_coupling_collate_fn(
+            max_length=cfg.data.max_length,
+            pad_to_multiple_of=cfg.data.pad_to_multiple_of,
+            pad_value=cfg.data.pad_value,
+            mask_dtype=torch.bool,
+        )
+    else:
+        # For direct models, use CitationEmbeddingDataset directly
+        test_ds = CitationEmbeddingDataset(
+            citations_file=test_citations,
+            paper_embeddings_file=data_dir / "paper_embeddings.parquet",
+            citation_embeddings_dir=data_dir / "test",
+            citations_batch_size=cfg.data.citations_batch_size,
+            shuffle=False,  # Don't shuffle for evaluation
+            shuffle_shards=False,
+            papers_file=papers_file if papers_file.exists() else None,
+            return_metadata=True,  # Enable metadata for saving examples
+        )
+        collate_fn = get_collate_fn(
+            max_length=cfg.data.max_length,
+            pad_to_multiple_of=cfg.data.pad_to_multiple_of,
+            pad_value=cfg.data.pad_value,
+            mask_dtype=torch.bool,
+        )
 
     # Create dataloader
-    collate_fn = get_collate_fn(
-        max_length=cfg.data.max_length,
-        pad_to_multiple_of=cfg.data.pad_to_multiple_of,
-        pad_value=cfg.data.pad_value,
-        mask_dtype=torch.bool,
-    )
-
     test_loader = DataLoader(
         test_ds,
         batch_size=cfg.evaluation.batch_size,
@@ -114,55 +159,95 @@ def main():
     )
     print("Test dataset loaded.")
 
-    # Load model
-    print(f"\nLoading model from {model_path}...")
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model checkpoint not found at {model_path}")
+    # Load model based on type
+    if model_type == "rectflow":
+        # Load rectflow model
+        print(f"\nLoading rectflow model from {model_path}...")
+        if not model_path.exists():
+            raise FileNotFoundError(f"Model checkpoint not found at {model_path}")
 
-    task_model = load_model(
-        str(model_path),
-        device=args.device,
-        hidden_size=cfg.model.hidden_size,
-        num_hidden_layers=cfg.model.num_hidden_layers,
-        num_attention_heads=cfg.model.num_attention_heads,
-        intermediate_size=cfg.model.intermediate_size,
-        max_position_embeddings=cfg.model.max_position_embeddings,
-    )
-    print("Model loaded successfully.")
+        # Determine conditioning checkpoint path
+        conditioning_checkpoint = (
+            args.conditioning_checkpoint
+            if args.conditioning_checkpoint is not None
+            else cfg.rectflow.conditioning_checkpoint
+        )
+        if not Path(conditioning_checkpoint).exists():
+            raise FileNotFoundError(f"Conditioning model checkpoint not found at {conditioning_checkpoint}")
 
-    # Load general model for inference (must match the model used to build embeddings)
-    print(f"\nLoading general model: {cfg.data.basemodel_name}...")
-    general_model = SentenceTransformer(cfg.data.basemodel_name, device=args.device)
-    print("General model loaded successfully.")
+        # Load rectflow model using the centralized function
+        rectified_flow = load_rectflow_model(
+            velocity_field_checkpoint=str(model_path),
+            rectflow_config=cfg.rectflow,
+            model_config=cfg.model,
+            max_length=cfg.data.max_length,
+            device=args.device,
+            conditioning_checkpoint=conditioning_checkpoint,
+        )
+        print("RectifiedFlow model loaded successfully.")
 
-    # Build KNN index
-    print("\nBuilding KNN index...")
-    paper_embeddings_file = data_dir / "paper_embeddings.parquet"
-    if not paper_embeddings_file.exists():
-        raise FileNotFoundError(f"Paper embeddings not found at {paper_embeddings_file}")
+        # Run evaluation
+        print("\nStarting evaluation...\n")
+        metrics = evaluate_rectflow(
+            rectified_flow=rectified_flow,
+            dataloader=test_loader,
+            device=args.device,
+            max_batches=cfg.evaluation.max_batches,
+            show_progress=True,
+            num_examples=20,  # Save 20 random examples
+            top_k=args.top_k,
+        )
 
-    inference = Inference(
-        general_model=general_model,
-        task_model=task_model,
-        max_length=cfg.data.max_length,
-        pad_to_multiple_of=cfg.data.pad_to_multiple_of,
-        device=args.device,
-    )
-    inference.build_index(paper_embeddings_file)
-    print(f"KNN index built with {len(inference.paper_embeddings)} papers.")
+    else:  # model_type == "direct"
+        # Load direct model
+        print(f"\nLoading model from {model_path}...")
+        if not model_path.exists():
+            raise FileNotFoundError(f"Model checkpoint not found at {model_path}")
 
-    # Run evaluation
-    print("\nStarting evaluation...\n")
-    metrics = evaluate(
-        model=task_model,
-        dataloader=test_loader,
-        device=args.device,
-        inference=inference,
-        max_batches=cfg.evaluation.max_batches,
-        show_progress=True,
-        num_examples=20,  # Save 20 random examples
-        top_k=args.top_k,
-    )
+        task_model = load_model(
+            str(model_path),
+            device=args.device,
+            hidden_size=cfg.model.hidden_size,
+            num_hidden_layers=cfg.model.num_hidden_layers,
+            num_attention_heads=cfg.model.num_attention_heads,
+            intermediate_size=cfg.model.intermediate_size,
+            max_position_embeddings=cfg.model.max_position_embeddings,
+        )
+        print("Model loaded successfully.")
+
+        # Load general model for inference (must match the model used to build embeddings)
+        print(f"\nLoading general model: {cfg.data.basemodel_name}...")
+        general_model = SentenceTransformer(cfg.data.basemodel_name, device=args.device)
+        print("General model loaded successfully.")
+
+        # Build KNN index
+        print("\nBuilding KNN index...")
+        paper_embeddings_file = data_dir / "paper_embeddings.parquet"
+        if not paper_embeddings_file.exists():
+            raise FileNotFoundError(f"Paper embeddings not found at {paper_embeddings_file}")
+
+        inference = Inference(
+            general_model=general_model,
+            task_model=task_model,
+            max_length=cfg.data.max_length,
+            pad_to_multiple_of=cfg.data.pad_to_multiple_of,
+            device=args.device,
+        )
+        inference.build_index(paper_embeddings_file)
+        print(f"KNN index built with {len(inference.paper_embeddings)} papers.")
+
+        # Run evaluation
+        print("\nStarting evaluation...\n")
+        metrics = evaluate(
+            model=task_model,
+            dataloader=test_loader,
+            device=args.device,
+            inference=inference,
+            max_batches=cfg.evaluation.max_batches,
+            show_progress=True,
+            num_examples=20,  # Save 20 random examples
+            top_k=args.top_k,
+        )
 
     # Print results
     print_metrics(metrics)
