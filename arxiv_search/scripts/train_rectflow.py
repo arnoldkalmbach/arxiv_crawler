@@ -2,23 +2,22 @@
 
 import argparse
 from pathlib import Path
-import torch
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from omegaconf import OmegaConf
 
-from arxiv_search.config import Config
+import torch
+import torch.distributions as dist
+import torch.optim as optim
+from omegaconf import OmegaConf
+from rectified_flow import RectifiedFlow
+from torch.utils.data import DataLoader
+
+from arxiv_search.config import load_config
 from arxiv_search.dataloader import (
     CitationEmbeddingDataset,
     ensure_dataset_exists,
 )
 from arxiv_search.iterable_coupling_dataset import IterableCouplingDataset, get_coupling_collate_fn
-from arxiv_search.model import load_model
-from rectified_flow import RectifiedFlow
+from arxiv_search.model import VelocityField1dDiT, load_model
 from arxiv_search.training_rectflow import train
-
-import torch.distributions as dist
-from arxiv_search.model import VelocityField1dCrossAttention, VelocityField1dDiT
 
 
 def parse_args():
@@ -42,42 +41,18 @@ def parse_args():
         default="rectflow_models",
         help="Directory to save model checkpoints",
     )
-    return parser.parse_args()
-
-
-def load_config() -> Config:
-    """
-    Load configuration from YAML file and merge with CLI overrides.
-
-    Returns:
-        Merged configuration object
-    """
-    # Load structured config (provides schema and defaults)
-    schema = OmegaConf.structured(Config)
-
-    # Load from default YAML file
-    config_file = Path("configs/default.yaml")
-    if config_file.exists():
-        yaml_conf = OmegaConf.load(config_file)
-        conf = OmegaConf.merge(schema, yaml_conf)
-    else:
-        print(f"Warning: Config file {config_file} not found, using defaults")
-        conf = schema
-
-    # Merge CLI arguments (highest priority)
-    cli_conf = OmegaConf.from_cli()
-    conf = OmegaConf.merge(conf, cli_conf)
-
-    return conf
+    # Use parse_known_args to separate normal args from config overrides
+    args, unknown = parser.parse_known_args()
+    return args, unknown
 
 
 def main():
     """Main training function."""
-    # Parse required arguments
-    args = parse_args()
+    # Parse required arguments and collect config overrides
+    args, unknown = parse_args()
 
-    # Load configuration
-    cfg = load_config()
+    # Load configuration (merges default.yaml with CLI config overrides)
+    cfg = load_config(cli_overrides=unknown)
 
     # Convert paths
     data_dir = Path(cfg.data.data_dir)
@@ -109,7 +84,6 @@ def main():
         extract_target=lambda x: x[1],
         extract_conditioning=lambda x: x[0],
     )
-
 
     # Create dataloader
     collate_fn = get_coupling_collate_fn(
@@ -145,7 +119,9 @@ def main():
     )
 
     # Create optimizer
-    optimizer = optim.AdamW((param for param in velocity_model.parameters() if param.requires_grad), lr=cfg.training.learning_rate)
+    optimizer = optim.AdamW(
+        (param for param in velocity_model.parameters() if param.requires_grad), lr=cfg.training.learning_rate
+    )
 
     # Train model
     print(f"\nStarting training for {cfg.training.num_epochs} epochs...")

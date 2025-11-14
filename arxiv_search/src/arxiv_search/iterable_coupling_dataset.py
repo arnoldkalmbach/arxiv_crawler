@@ -6,12 +6,13 @@ sample to always get the same noise vector without storing noise data.
 """
 
 import hashlib
+from functools import partial
+from typing import Callable, Hashable
+
 import torch
 import torch.distributions as dist
-from torch.utils.data import IterableDataset
 from torch.nn.utils.rnn import pad_sequence
-from typing import Hashable, Callable
-from functools import partial
+from torch.utils.data import IterableDataset
 
 
 def _to_tensor(x):
@@ -118,7 +119,6 @@ class IterableCouplingDataset(IterableDataset):
         seed = self._seed_from_key(key)
         torch.manual_seed(seed)
         return distribution.sample(shape)
-
 
     def __iter__(self):
         """Yield (X0, X1, conditioning) tuples for rectified flow training."""

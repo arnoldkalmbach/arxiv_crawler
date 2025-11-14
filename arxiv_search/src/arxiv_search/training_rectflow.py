@@ -2,10 +2,11 @@
 
 from pathlib import Path
 from typing import Optional
+
 import torch
+from rectified_flow import RectifiedFlow
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from rectified_flow import RectifiedFlow
 
 
 def train_epoch(
