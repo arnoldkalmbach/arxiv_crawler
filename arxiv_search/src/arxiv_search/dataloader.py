@@ -54,7 +54,7 @@ def collate_embeddings_with_targets(
     batch_len = len(batch[0])
     has_targets = batch_len >= 2
     has_metadata = batch_len == 3
-    
+
     # Convert to tensors and apply truncation
     Xs, Ys, Metas = [], [], []
     for item in batch:
@@ -66,7 +66,7 @@ def collate_embeddings_with_targets(
         else:
             X = item[0]
             y = None
-            
+
         Xt = _to_tensor(X)  # [Li, K]
         if max_length is not None:
             Xt = Xt[:max_length]
@@ -111,17 +111,17 @@ def collate_embeddings_with_targets(
         "attention_mask": attention_mask,  # [B, L], bool (or chosen dtype)
         "lengths": lengths,  # [B]
     }
-    
+
     # Add targets if present
     if has_targets:
         # Stack targets robustly (supports tensors, numbers, tuples, dicts, etc.)
         targets = default_collate([_to_tensor(y) for y in Ys])
         result["targets"] = targets  # e.g., [B, T] or [B] depending on your dataset
-    
+
     # Add metadata if present
     if has_metadata:
         result["metadata"] = Metas
-    
+
     return result
 
 
@@ -226,7 +226,7 @@ class CitationEmbeddingDataset(IterableDataset):
         # Shuffling options
         self.shuffle = shuffle  # Shuffle within shards
         self.shuffle_shards = shuffle_shards  # Shuffle shard order
-        
+
         # Return metadata (for evaluation/inspection)
         self.return_metadata = return_metadata
 
@@ -247,12 +247,12 @@ class CitationEmbeddingDataset(IterableDataset):
             sentence_embedding = np.array(row["sentence_embedding"], dtype=np.float32)
             paper_embeddings_dict[arxiv_id] = torch.from_numpy(sentence_embedding)
         return paper_embeddings_dict
-    
+
     def _build_paper_metadata_dict(self, papers: Optional[pl.DataFrame]) -> dict[str, dict]:
         """Build a lookup dictionary mapping arxiv_id to paper metadata (title, abstract)."""
         if papers is None:
             return {}
-        
+
         paper_metadata_dict = {}
         for row in papers.iter_rows(named=True):
             arxiv_id = row["arxiv_id"]
@@ -318,7 +318,9 @@ class CitationEmbeddingDataset(IterableDataset):
             reference_ids = shard_citations["reference_id"].to_list()
             citer_arxiv_ids = shard_citations["citer_arxiv_id"].to_list()
             cited_arxiv_ids = shard_citations["cited_arxiv_id"].to_list()
-            reference_contexts = shard_citations["reference_contexts"].to_list() if self.return_metadata else [None] * len(reference_ids)
+            reference_contexts = (
+                shard_citations["reference_contexts"].to_list() if self.return_metadata else [None] * len(reference_ids)
+            )
 
             # Shuffle within shard if requested
             if self.shuffle:

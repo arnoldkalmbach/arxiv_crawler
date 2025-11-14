@@ -207,10 +207,12 @@ def evaluate(
             # Collect examples with metadata if available
             if metadata is not None:
                 for i in range(len(metadata)):
-                    all_examples.append({
-                        "cosine_similarity": cosine_sims[i].item(),
-                        "metadata": metadata[i],
-                    })
+                    all_examples.append(
+                        {
+                            "cosine_similarity": cosine_sims[i].item(),
+                            "metadata": metadata[i],
+                        }
+                    )
 
             num_samples += X.size(0)
 
@@ -228,33 +230,40 @@ def evaluate(
         # Sample without replacement if we have enough examples
         num_to_sample = min(num_examples, len(all_examples))
         import random
+
         sampled_indices = random.sample(range(len(all_examples)), num_to_sample)
         sampled_examples = [all_examples[i] for i in sampled_indices]
         # Sort by cosine similarity for easier reading
         sampled_examples.sort(key=lambda x: x["cosine_similarity"], reverse=True)
-        
+
         # Add KNN retrieval results for each example
         for example in sampled_examples:
             meta = example["metadata"]
             # Use the cited paper as the general context and citation context as task context
             general_context = meta.get("cited_title", "")
             task_context = meta.get("reference_context", "")
-            
+
             if general_context:
                 # Perform KNN search
                 search_contexts = [(general_context, task_context)]
                 matches_df = inference.get_matches(search_contexts, top_k=top_k)
-                matches_with_meta = pl.scan_ndjson(dataloader.dataset.papers_file).join(matches_df.lazy(), on='arxiv_id', how='inner').collect()
-                
+                matches_with_meta = (
+                    pl.scan_ndjson(dataloader.dataset.papers_file)
+                    .join(matches_df.lazy(), on="arxiv_id", how="inner")
+                    .collect()
+                )
+
                 # Filter to the first query's results and convert to list of dicts
                 query_matches = matches_with_meta.filter(matches_with_meta["query_index"] == 0)
                 knn_results = []
                 for row in query_matches.iter_rows(named=True):
-                    knn_results.append({
-                        "arxiv_id": row.get("arxiv_id", ""),
-                        "title": row.get("title", ""),
-                        "distance": row.get("distance", 0.0),
-                    })
+                    knn_results.append(
+                        {
+                            "arxiv_id": row.get("arxiv_id", ""),
+                            "title": row.get("title", ""),
+                            "distance": row.get("distance", 0.0),
+                        }
+                    )
                 example["knn_matches"] = knn_results
 
     # Compute metrics
@@ -346,16 +355,16 @@ def save_examples(examples: list[dict], save_path: Path, model_path: Optional[Pa
 
             f.write(f"Example {i}:\n")
             f.write(f"  Cosine Similarity: {cosine_sim:.4f}\n\n")
-            
+
             f.write(f"  Citing Paper (arxiv_id: {meta['citer_arxiv_id']}):\n")
             citer_title = meta.get("citer_title", "")
             if citer_title:
                 f.write(f"    Title: {citer_title}\n")
             else:
-                f.write(f"    Title: [Not available]\n")
+                f.write("    Title: [Not available]\n")
             f.write("\n")
-            
-            f.write(f"  Citation Context:\n")
+
+            f.write("  Citation Context:\n")
             context = meta.get("reference_context", "")
             # Wrap long lines for better readability
             if context:
@@ -363,16 +372,16 @@ def save_examples(examples: list[dict], save_path: Path, model_path: Optional[Pa
                 context_lines = context.replace(". ", ".\n    ")
                 f.write(f"    {context_lines}\n")
             else:
-                f.write(f"    [Not available]\n")
+                f.write("    [Not available]\n")
             f.write("\n")
-            
+
             f.write(f"  Cited Paper (arxiv_id: {meta['cited_arxiv_id']}):\n")
             cited_title = meta.get("cited_title", "")
             if cited_title:
                 f.write(f"    Title: {cited_title}\n")
             else:
-                f.write(f"    Title: [Not available]\n")
-            
+                f.write("    Title: [Not available]\n")
+
             # Add KNN retrieval results if available
             knn_matches = example.get("knn_matches", [])
             if knn_matches:
@@ -382,15 +391,15 @@ def save_examples(examples: list[dict], save_path: Path, model_path: Optional[Pa
                     match_title = match.get("title", "")
                     match_arxiv_id = match.get("arxiv_id", "")
                     match_distance = match.get("distance", 0.0)
-                    
+
                     # Check if this is the ground truth cited paper
                     is_ground_truth = match_arxiv_id == meta.get("cited_arxiv_id", "")
                     gt_marker = " ★ [GROUND TRUTH]" if is_ground_truth else ""
-                    
+
                     f.write(f"    {j}. Distance: {match_distance:.4f}{gt_marker}\n")
                     f.write(f"       arxiv_id: {match_arxiv_id}\n")
                     if match_title:
                         f.write(f"       Title: {match_title}\n")
                     f.write("\n")
-            
+
             f.write("-" * 80 + "\n\n")

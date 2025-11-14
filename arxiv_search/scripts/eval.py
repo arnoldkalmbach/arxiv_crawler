@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from omegaconf import OmegaConf
 from sentence_transformers import SentenceTransformer
 
-from arxiv_search.config import Config, load_config
+from arxiv_search.config import load_config
 from arxiv_search.dataloader import (
     CitationEmbeddingDataset,
     ensure_dataset_exists,
@@ -19,6 +19,7 @@ from arxiv_search.inference import Inference
 
 
 # TODO: Implement retrieval metrics to see how we're doing on negatives, not just cossim of positives
+
 
 def parse_args():
     """Parse command line arguments."""
@@ -133,13 +134,13 @@ def main():
     print(f"\nLoading general model: {cfg.data.basemodel_name}...")
     general_model = SentenceTransformer(cfg.data.basemodel_name, device=args.device)
     print("General model loaded successfully.")
-    
+
     # Build KNN index
     print("\nBuilding KNN index...")
     paper_embeddings_file = data_dir / "paper_embeddings.parquet"
     if not paper_embeddings_file.exists():
         raise FileNotFoundError(f"Paper embeddings not found at {paper_embeddings_file}")
-    
+
     inference = Inference(
         general_model=general_model,
         task_model=task_model,
@@ -170,7 +171,7 @@ def main():
     metrics_path = model_path.parent / f"{model_path.stem}_eval_metrics.txt"
     save_metrics(metrics, metrics_path, model_path)
     print(f"Metrics saved to {metrics_path}")
-    
+
     # Save examples to file
     if metrics.get("examples"):
         examples_path = model_path.parent / f"{model_path.stem}_eval_examples.txt"
