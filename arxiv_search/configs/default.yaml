@@ -4,6 +4,12 @@ data:
   data_dir: data
   hf_dataset_name: "akalmbach-kinsol/generative-papers-arxiv"  # Set to HuggingFace dataset name for auto-download
   citations_batch_size: 10000
+  basemodel_name: "sentence-transformers/allenai-specter"
+  
+  # Dataset building settings
+  embedding_batch_size: 5000  # Batch size for processing citation embeddings
+  test_size: 0.1  # Fraction of papers to use for test set
+  random_seed: 42  # Random seed for train/test split
   
   # Collation settings
   max_length: 256

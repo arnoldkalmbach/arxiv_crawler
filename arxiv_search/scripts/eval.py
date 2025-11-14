@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from omegaconf import OmegaConf
 from sentence_transformers import SentenceTransformer
 
-from arxiv_search.config import Config
+from arxiv_search.config import Config, load_config
 from arxiv_search.dataloader import (
     CitationEmbeddingDataset,
     ensure_dataset_exists,
@@ -39,54 +39,23 @@ def parse_args():
         help="Device to use for evaluation (cuda or cpu)",
     )
     parser.add_argument(
-        "--general-model",
-        type=str,
-        default="sentence-transformers/allenai-specter",
-        help="Name of the general SentenceTransformer model to use",
-    )
-    parser.add_argument(
         "--top-k",
         type=int,
         default=5,
         help="Number of top KNN matches to retrieve for each example",
     )
-    return parser.parse_args()
-
-
-def load_config() -> Config:
-    """
-    Load configuration from YAML file and merge with CLI overrides.
-
-    Returns:
-        Merged configuration object
-    """
-    # Load structured config (provides schema and defaults)
-    schema = OmegaConf.structured(Config)
-
-    # Load from default YAML file
-    config_file = Path("configs/default.yaml")
-    if config_file.exists():
-        yaml_conf = OmegaConf.load(config_file)
-        conf = OmegaConf.merge(schema, yaml_conf)
-    else:
-        print(f"Warning: Config file {config_file} not found, using defaults")
-        conf = schema
-
-    # Merge CLI arguments (highest priority)
-    # TODO: This does not work properly, there are some CLI args not in the config so merging fails
-    # cli_conf = OmegaConf.from_cli()
-    # conf = OmegaConf.merge(conf, cli_conf, strict=False)
-
-    return conf
+    # Use parse_known_args to separate normal args from config overrides
+    args, unknown = parser.parse_known_args()
+    return args, unknown
 
 
 def main():
     """Main evaluation function."""
-    # Parse required arguments
-    args = parse_args()
+    # Parse required arguments and collect config overrides
+    args, unknown = parse_args()
 
-    # Load configuration
-    cfg = load_config()
+    # Load configuration (merges default.yaml with CLI config overrides)
+    cfg = load_config(cli_overrides=unknown)
 
     # Convert paths
     data_dir = Path(cfg.data.data_dir)
@@ -149,7 +118,7 @@ def main():
     if not model_path.exists():
         raise FileNotFoundError(f"Model checkpoint not found at {model_path}")
 
-    model = load_model(
+    task_model = load_model(
         str(model_path),
         device=args.device,
         hidden_size=cfg.model.hidden_size,
@@ -160,9 +129,9 @@ def main():
     )
     print("Model loaded successfully.")
 
-    # Load general model for inference
-    print(f"\nLoading general model: {args.general_model}...")
-    general_model = SentenceTransformer(args.general_model, device=args.device)
+    # Load general model for inference (must match the model used to build embeddings)
+    print(f"\nLoading general model: {cfg.data.basemodel_name}...")
+    general_model = SentenceTransformer(cfg.data.basemodel_name, device=args.device)
     print("General model loaded successfully.")
     
     # Build KNN index
@@ -173,7 +142,7 @@ def main():
     
     inference = Inference(
         general_model=general_model,
-        task_model=model,
+        task_model=task_model,
         max_length=cfg.data.max_length,
         pad_to_multiple_of=cfg.data.pad_to_multiple_of,
         device=args.device,
@@ -184,7 +153,7 @@ def main():
     # Run evaluation
     print("\nStarting evaluation...\n")
     metrics = evaluate(
-        model=model,
+        model=task_model,
         dataloader=test_loader,
         device=args.device,
         inference=inference,
