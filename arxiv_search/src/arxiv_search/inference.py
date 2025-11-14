@@ -1,11 +1,13 @@
-import torch
-import faiss
-from transformers import BertModel
-from sentence_transformers import SentenceTransformer
-import numpy as np
-from .dataloader import collate_embeddings_with_targets
-import polars as pl
 from pathlib import Path
+
+import faiss
+import numpy as np
+import polars as pl
+import torch
+from sentence_transformers import SentenceTransformer
+from transformers import BertModel
+
+from .dataloader import collate_embeddings_with_targets
 
 
 class Inference:

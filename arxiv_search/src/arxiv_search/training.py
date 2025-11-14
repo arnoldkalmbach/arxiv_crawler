@@ -2,13 +2,14 @@
 
 from pathlib import Path
 from typing import Optional
-import torch
+
 import numpy as np
+import polars as pl
+import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from transformers import BertModel
 from tqdm import tqdm
-import polars as pl
+from transformers import BertModel
 
 
 def train_epoch(

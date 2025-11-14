@@ -2,10 +2,11 @@
 
 import argparse
 from pathlib import Path
+
 import torch
-from torch.utils.data import DataLoader
 from omegaconf import OmegaConf
 from sentence_transformers import SentenceTransformer
+from torch.utils.data import DataLoader
 
 from arxiv_search.config import load_config
 from arxiv_search.dataloader import (
@@ -13,10 +14,9 @@ from arxiv_search.dataloader import (
     ensure_dataset_exists,
     get_collate_fn,
 )
-from arxiv_search.model import load_model
-from arxiv_search.training import evaluate, print_metrics, save_metrics, save_examples
 from arxiv_search.inference import Inference
-
+from arxiv_search.model import load_model
+from arxiv_search.training import evaluate, print_metrics, save_examples, save_metrics
 
 # TODO: Implement retrieval metrics to see how we're doing on negatives, not just cossim of positives
 
