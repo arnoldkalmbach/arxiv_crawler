@@ -63,6 +63,35 @@ class EvaluationConfig:
 
 
 @dataclass
+class RectflowConfig:
+    """Rectified flow model configuration."""
+
+    # Velocity field architecture
+    velocity_field_type: str = "DiT"  # "DiT" or "CrossAttention"
+    num_blocks: int = 1  # Number of transformer blocks in velocity field
+    num_heads: int = 4  # Number of attention heads
+    mlp_ratio: float = 4.0  # MLP expansion ratio
+
+    # Conditioning model
+    conditioning_checkpoint: str = "models/model_500.pth"  # Path to conditioning model checkpoint
+
+
+@dataclass
+class RectflowTrainingConfig:
+    """Rectified flow training configuration."""
+
+    batch_size: int = 256
+    num_workers: int = 6
+    num_epochs: int = 20
+    learning_rate: float = 1e-3
+
+    # Logging
+    log_steps: int = 10
+    save_steps: int = 500
+    tensorboard_dir: str = "runs_rectflow"
+
+
+@dataclass
 class Config:
     """Main configuration combining all sub-configs."""
 
@@ -70,6 +99,8 @@ class Config:
     model: ModelConfig = field(default_factory=ModelConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
+    rectflow: RectflowConfig = field(default_factory=RectflowConfig)
+    rectflow_training: RectflowTrainingConfig = field(default_factory=RectflowTrainingConfig)
 
 
 def load_config(config_file: Optional[Path] = None, cli_overrides: Optional[list[str]] = None) -> Config:

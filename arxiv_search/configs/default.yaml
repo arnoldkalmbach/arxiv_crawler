@@ -39,3 +39,23 @@ evaluation:
   num_workers: 0
   max_batches: 10  # null = evaluate all batches
 
+rectflow:
+  # Velocity field architecture
+  velocity_field_type: "DiT"  # "DiT" or "CrossAttention"
+  num_blocks: 1  # Number of transformer blocks in velocity field
+  num_heads: 4  # Number of attention heads
+  mlp_ratio: 4.0  # MLP expansion ratio
+  
+  # Conditioning model
+  conditioning_checkpoint: "models/model_500.pth"  # Path to conditioning model checkpoint
+
+rectflow_training:
+  batch_size: 256
+  num_workers: 6
+  num_epochs: 20
+  learning_rate: 1e-3
+  
+  # Logging
+  log_steps: 10
+  save_steps: 500
+  tensorboard_dir: runs_rectflow

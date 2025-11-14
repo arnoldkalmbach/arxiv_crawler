@@ -16,7 +16,7 @@ from arxiv_search.dataloader import (
     ensure_dataset_exists,
 )
 from arxiv_search.iterable_coupling_dataset import IterableCouplingDataset, get_coupling_collate_fn
-from arxiv_search.model import VelocityField1dDiT, load_model
+from arxiv_search.model import VelocityField1dCrossAttention, VelocityField1dDiT, load_model
 from arxiv_search.training_rectflow import train
 
 
@@ -32,8 +32,8 @@ def parse_args():
     parser.add_argument(
         "--conditioning-checkpoint",
         type=str,
-        default="models/model_500.pth",
-        help="Directory to save model checkpoints",
+        default=None,
+        help="Path to conditioning model checkpoint (overrides config)",
     )
     parser.add_argument(
         "--models-dir",
@@ -57,7 +57,7 @@ def main():
     # Convert paths
     data_dir = Path(cfg.data.data_dir)
     models_dir = Path(args.models_dir)
-    tensorboard_dir = Path(cfg.training.tensorboard_dir)
+    tensorboard_dir = Path(cfg.rectflow_training.tensorboard_dir)
 
     # Print configuration
     print("=" * 60)
@@ -79,9 +79,11 @@ def main():
             paper_embeddings_file=data_dir / "paper_embeddings.parquet",
             citation_embeddings_dir=data_dir / "train",
             citations_batch_size=cfg.data.citations_batch_size,
+            return_metadata=True,
         ),
         D0=dist.Normal(loc=0.0, scale=1.0),
         extract_target=lambda x: x[1],
+        extract_key=lambda x: x[2]["reference_id"],
         extract_conditioning=lambda x: x[0],
     )
 
@@ -95,22 +97,44 @@ def main():
 
     train_loader = DataLoader(
         train_ds,
-        batch_size=cfg.training.batch_size,
-        num_workers=cfg.training.num_workers,
+        batch_size=cfg.rectflow_training.batch_size,
+        num_workers=cfg.rectflow_training.num_workers,
         collate_fn=collate_fn,
-        persistent_workers=True if cfg.training.num_workers > 0 else False,
+        persistent_workers=True if cfg.rectflow_training.num_workers > 0 else False,
         pin_memory=True if args.device == "cuda" else False,
-        prefetch_factor=3 if cfg.training.num_workers > 0 else None,
+        prefetch_factor=3 if cfg.rectflow_training.num_workers > 0 else None,
     )
     print("Created train loader")
 
     # Create model
     print("\nCreating model...")
-    conditioning_model = load_model(args.conditioning_checkpoint)
+    conditioning_checkpoint = (
+        args.conditioning_checkpoint
+        if args.conditioning_checkpoint is not None
+        else cfg.rectflow.conditioning_checkpoint
+    )
+    conditioning_model = load_model(conditioning_checkpoint)
     conditioning_model.requires_grad_(False)
 
-    # velocity_model = VelocityField1dCrossAttention(1, conditioning_model, 4, 4.0).to(args.device)
-    velocity_model = VelocityField1dDiT(1, conditioning_model, 4, 4.0).to(args.device)
+    # Create velocity field based on config
+    if cfg.rectflow.velocity_field_type == "DiT":
+        velocity_model = VelocityField1dDiT(
+            num_blocks=cfg.rectflow.num_blocks,
+            conditioning_model=conditioning_model,
+            num_heads=cfg.rectflow.num_heads,
+            mlp_ratio=cfg.rectflow.mlp_ratio,
+        ).to(args.device)
+    elif cfg.rectflow.velocity_field_type == "CrossAttention":
+        velocity_model = VelocityField1dCrossAttention(
+            num_blocks=cfg.rectflow.num_blocks,
+            conditioning_model=conditioning_model,
+            num_heads=cfg.rectflow.num_heads,
+            mlp_ratio=cfg.rectflow.mlp_ratio,
+        ).to(args.device)
+    else:
+        raise ValueError(
+            f"Unknown velocity_field_type: {cfg.rectflow.velocity_field_type}. Must be 'DiT' or 'CrossAttention'"
+        )
 
     rectified_flow = RectifiedFlow(
         data_shape=(cfg.data.max_length, conditioning_model.config.hidden_size),
@@ -120,11 +144,11 @@ def main():
 
     # Create optimizer
     optimizer = optim.AdamW(
-        (param for param in velocity_model.parameters() if param.requires_grad), lr=cfg.training.learning_rate
+        (param for param in velocity_model.parameters() if param.requires_grad), lr=cfg.rectflow_training.learning_rate
     )
 
     # Train model
-    print(f"\nStarting training for {cfg.training.num_epochs} epochs...")
+    print(f"\nStarting training for {cfg.rectflow_training.num_epochs} epochs...")
     print("=" * 60)
 
     train(
@@ -132,9 +156,9 @@ def main():
         dataloader=train_loader,
         optimizer=optimizer,
         device=args.device,
-        num_epochs=cfg.training.num_epochs,
-        log_steps=cfg.training.log_steps,
-        save_steps=cfg.training.save_steps,
+        num_epochs=cfg.rectflow_training.num_epochs,
+        log_steps=cfg.rectflow_training.log_steps,
+        save_steps=cfg.rectflow_training.save_steps,
         save_dir=models_dir,
         tensorboard_dir=tensorboard_dir,
     )
