@@ -18,7 +18,7 @@ from rectified_flow import RectifiedFlow
 from arxiv_search.training_rectflow import train
 
 import torch.distributions as dist
-from arxiv_search.model import VelocityField1dCrossAttention
+from arxiv_search.model import VelocityField1dCrossAttention, VelocityField1dDiT
 
 
 def parse_args():
@@ -135,8 +135,8 @@ def main():
     conditioning_model = load_model(args.conditioning_checkpoint)
     conditioning_model.requires_grad_(False)
 
-    velocity_model = VelocityField1dCrossAttention(1, conditioning_model, 4, 4.0).to(args.device)
-    # velocity_model = VelocityField1dDiT(1, conditioning_model, 4, 4.0)
+    # velocity_model = VelocityField1dCrossAttention(1, conditioning_model, 4, 4.0).to(args.device)
+    velocity_model = VelocityField1dDiT(1, conditioning_model, 4, 4.0).to(args.device)
 
     rectified_flow = RectifiedFlow(
         data_shape=(cfg.data.max_length, conditioning_model.config.hidden_size),

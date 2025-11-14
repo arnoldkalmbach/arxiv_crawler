@@ -108,10 +108,7 @@ class DiTBlock1d(nn.Module):
         self.adaln = nn.Sequential(nn.SiLU(), nn.Linear(hidden_size, hidden_size * 6, bias=True))
 
     def forward(self, x, c):
-        print(x.shape, c.shape)
         shift_attn, scale_attn, gate_attn, shift_mlp, scale_mlp, gate_mlp = self.adaln(c).chunk(6, dim=1)
-
-        print(shift_attn.shape, scale_attn.shape, gate_attn.shape, shift_mlp.shape, scale_mlp.shape, gate_mlp.shape)
 
         attn_out = self.attn(self.norm_attn(shift_attn[:, None] + (scale_attn[:, None] + 1) * x))
 
