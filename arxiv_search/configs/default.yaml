@@ -47,7 +47,7 @@ rectflow:
   mlp_ratio: 4.0  # MLP expansion ratio
   
   # Conditioning model
-  conditioning_checkpoint: "models/model_500.pth"  # Path to conditioning model checkpoint
+  conditioning_checkpoint: null  # Path to conditioning model checkpoint (null = auto-find latest in runs/)
 
 rectflow_training:
   batch_size: 128

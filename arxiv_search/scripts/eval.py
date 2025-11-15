@@ -9,7 +9,7 @@ from omegaconf import OmegaConf
 from sentence_transformers import SentenceTransformer
 from torch.utils.data import DataLoader
 
-from arxiv_search.config import load_config
+from arxiv_search.config import find_latest_checkpoint, load_config
 from arxiv_search.dataloader import (
     CitationEmbeddingDataset,
     ensure_dataset_exists,
@@ -33,8 +33,8 @@ def parse_args():
     parser.add_argument(
         "--model-path",
         type=str,
-        required=True,
-        help="Path to trained model checkpoint (.pth file)",
+        default=None,
+        help="Path to trained model checkpoint (.pth file). If not specified, auto-finds latest checkpoint of the specified type.",
     )
     parser.add_argument(
         "--device",
@@ -59,7 +59,7 @@ def parse_args():
         "--conditioning-checkpoint",
         type=str,
         default=None,
-        help="Path to conditioning model checkpoint for rectflow models (overrides config)",
+        help="Path to conditioning model checkpoint for rectflow models (default: auto-finds latest in runs/)",
     )
     # Use parse_known_args to separate normal args from config overrides
     args, unknown = parser.parse_known_args()
@@ -76,8 +76,33 @@ def main():
 
     # Convert paths
     data_dir = Path(cfg.data.data_dir)
-    model_path = Path(args.model_path)
     model_type = args.model_type
+
+    # Auto-find model path if not specified
+    if args.model_path is None:
+        print("Auto-searching for latest checkpoint...")
+        if model_type == "rectflow":
+            base_dir = cfg.rectflow_training.tensorboard_dir
+            latest_checkpoint = find_latest_checkpoint(base_dir, pattern="model_*.pth")
+            if latest_checkpoint is None:
+                # Fallback to old directory
+                latest_checkpoint = find_latest_checkpoint("rectflow_models", pattern="model_*.pth")
+        else:  # direct
+            base_dir = cfg.training.tensorboard_dir
+            latest_checkpoint = find_latest_checkpoint(base_dir, pattern="model_*.pth")
+            if latest_checkpoint is None:
+                # Fallback to old directory
+                latest_checkpoint = find_latest_checkpoint("models", pattern="model_*.pth")
+
+        if latest_checkpoint is None:
+            raise FileNotFoundError(
+                f"Could not find {model_type} model checkpoint. Please specify --model-path or "
+                f"ensure checkpoints exist in {base_dir} or the old models directory."
+            )
+        model_path = latest_checkpoint
+        print(f"Using latest checkpoint: {model_path}")
+    else:
+        model_path = Path(args.model_path)
 
     # Print configuration
     print("=" * 60)
@@ -167,13 +192,25 @@ def main():
             raise FileNotFoundError(f"Model checkpoint not found at {model_path}")
 
         # Determine conditioning checkpoint path
-        conditioning_checkpoint = (
-            args.conditioning_checkpoint
-            if args.conditioning_checkpoint is not None
-            else cfg.rectflow.conditioning_checkpoint
-        )
-        if not Path(conditioning_checkpoint).exists():
-            raise FileNotFoundError(f"Conditioning model checkpoint not found at {conditioning_checkpoint}")
+        if args.conditioning_checkpoint is not None:
+            conditioning_checkpoint = args.conditioning_checkpoint
+        elif cfg.rectflow.conditioning_checkpoint and Path(cfg.rectflow.conditioning_checkpoint).exists():
+            conditioning_checkpoint = cfg.rectflow.conditioning_checkpoint
+        else:
+            # Auto-find latest checkpoint from previous runs
+            print("Auto-searching for latest conditioning checkpoint...")
+            latest_checkpoint = find_latest_checkpoint("runs", pattern="model_*.pth")
+            if latest_checkpoint is None:
+                # Fallback to old models directory for backwards compatibility
+                latest_checkpoint = find_latest_checkpoint("models", pattern="model_*.pth")
+
+            if latest_checkpoint is None:
+                raise FileNotFoundError(
+                    "Could not find conditioning checkpoint. Please specify --conditioning-checkpoint or "
+                    "ensure rectflow.conditioning_checkpoint in config points to a valid file."
+                )
+            conditioning_checkpoint = str(latest_checkpoint)
+            print(f"Using latest conditioning checkpoint: {conditioning_checkpoint}")
 
         # Load rectflow model using the centralized function
         rectified_flow = load_rectflow_model(

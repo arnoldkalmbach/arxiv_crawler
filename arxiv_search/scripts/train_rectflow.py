@@ -10,7 +10,7 @@ from omegaconf import OmegaConf
 from rectified_flow import RectifiedFlow
 from torch.utils.data import DataLoader
 
-from arxiv_search.config import load_config
+from arxiv_search.config import find_latest_checkpoint, load_config, setup_run_directory
 from arxiv_search.dataloader import (
     CitationEmbeddingDataset,
     ensure_dataset_exists,
@@ -33,13 +33,13 @@ def parse_args():
         "--conditioning-checkpoint",
         type=str,
         default=None,
-        help="Path to conditioning model checkpoint (overrides config)",
+        help="Path to conditioning model checkpoint (default: auto-finds latest in runs/)",
     )
     parser.add_argument(
         "--models-dir",
         type=str,
-        default="rectflow_models",
-        help="Directory to save model checkpoints",
+        default=None,
+        help="Directory to save model checkpoints (default: saves to run_dir/checkpoints/)",
     )
     # Use parse_known_args to separate normal args from config overrides
     args, unknown = parser.parse_known_args()
@@ -56,15 +56,23 @@ def main():
 
     # Convert paths
     data_dir = Path(cfg.data.data_dir)
-    models_dir = Path(args.models_dir)
-    tensorboard_dir = Path(cfg.rectflow_training.tensorboard_dir)
+
+    # Set up run directory with config-based naming
+    run_dir, tensorboard_dir, checkpoints_dir = setup_run_directory(
+        base_dir=cfg.rectflow_training.tensorboard_dir,
+        cfg=cfg,
+        experiment_type="rectflow",
+    )
+
+    # Use checkpoints_dir unless explicitly overridden
+    models_dir = Path(args.models_dir) if args.models_dir else checkpoints_dir
 
     # Print configuration
     print("=" * 60)
     print("Training Configuration")
     print("=" * 60)
     print(f"Device: {args.device}")
-    print(f"Models directory: {models_dir}")
+    print(f"Checkpoints directory: {models_dir}")
     print()
     print(OmegaConf.to_yaml(cfg))
     print("=" * 60)
@@ -108,11 +116,27 @@ def main():
 
     # Create model
     print("\nCreating model...")
-    conditioning_checkpoint = (
-        args.conditioning_checkpoint
-        if args.conditioning_checkpoint is not None
-        else cfg.rectflow.conditioning_checkpoint
-    )
+    # Determine conditioning checkpoint path
+    if args.conditioning_checkpoint is not None:
+        conditioning_checkpoint = args.conditioning_checkpoint
+    elif cfg.rectflow.conditioning_checkpoint and Path(cfg.rectflow.conditioning_checkpoint).exists():
+        conditioning_checkpoint = cfg.rectflow.conditioning_checkpoint
+    else:
+        # Auto-find latest checkpoint from previous runs
+        print("Auto-searching for latest conditioning checkpoint...")
+        latest_checkpoint = find_latest_checkpoint("runs", pattern="model_*.pth")
+        if latest_checkpoint is None:
+            # Fallback to old models directory for backwards compatibility
+            latest_checkpoint = find_latest_checkpoint("models", pattern="model_*.pth")
+
+        if latest_checkpoint is None:
+            raise FileNotFoundError(
+                "Could not find conditioning checkpoint. Please specify --conditioning-checkpoint or "
+                "ensure rectflow.conditioning_checkpoint in config points to a valid file."
+            )
+        conditioning_checkpoint = str(latest_checkpoint)
+        print(f"Using latest checkpoint: {conditioning_checkpoint}")
+
     conditioning_model = load_model(conditioning_checkpoint)
     conditioning_model.requires_grad_(False)
 
@@ -169,7 +193,10 @@ def main():
     print("Training complete!")
     print(f"Checkpoints saved to: {models_dir}")
     print(f"TensorBoard logs saved to: {tensorboard_dir}")
-    print(f"\nView training progress with: tensorboard --logdir {tensorboard_dir}")
+    print(f"Config saved to: {run_dir / 'config.yaml'}")
+    print(f"\nView training progress with: tensorboard --logdir {tensorboard_dir.parent}")
+    if models_dir != checkpoints_dir:
+        print(f"Note: Checkpoints saved to custom directory: {models_dir}")
 
 
 if __name__ == "__main__":
