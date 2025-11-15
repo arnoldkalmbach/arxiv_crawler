@@ -8,7 +8,7 @@ import torch.optim as optim
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader
 
-from arxiv_search.config import load_config
+from arxiv_search.config import load_config, setup_run_directory
 from arxiv_search.dataloader import (
     CitationEmbeddingDataset,
     ensure_dataset_exists,
@@ -33,8 +33,8 @@ def parse_args():
     parser.add_argument(
         "--models-dir",
         type=str,
-        default="models",
-        help="Directory to save model checkpoints",
+        default=None,
+        help="Directory to save model checkpoints (default: saves to run_dir/checkpoints/)",
     )
     # Use parse_known_args to separate normal args from config overrides
     args, unknown = parser.parse_known_args()
@@ -51,15 +51,23 @@ def main():
 
     # Convert paths
     data_dir = Path(cfg.data.data_dir)
-    models_dir = Path(args.models_dir)
-    tensorboard_dir = Path(cfg.training.tensorboard_dir)
+
+    # Set up run directory with config-based naming
+    run_dir, tensorboard_dir, checkpoints_dir = setup_run_directory(
+        base_dir=cfg.training.tensorboard_dir,
+        cfg=cfg,
+        experiment_type="direct",
+    )
+
+    # Use checkpoints_dir unless explicitly overridden
+    models_dir = Path(args.models_dir) if args.models_dir else checkpoints_dir
 
     # Print configuration
     print("=" * 60)
     print("Training Configuration")
     print("=" * 60)
     print(f"Device: {args.device}")
-    print(f"Models directory: {models_dir}")
+    print(f"Checkpoints directory: {models_dir}")
     print()
     print(OmegaConf.to_yaml(cfg))
     print("=" * 60)
@@ -132,7 +140,10 @@ def main():
     print("Training complete!")
     print(f"Checkpoints saved to: {models_dir}")
     print(f"TensorBoard logs saved to: {tensorboard_dir}")
-    print(f"\nView training progress with: tensorboard --logdir {tensorboard_dir}")
+    print(f"Config saved to: {run_dir / 'config.yaml'}")
+    print(f"\nView training progress with: tensorboard --logdir {tensorboard_dir.parent}")
+    if models_dir != checkpoints_dir:
+        print(f"Note: Checkpoints saved to custom directory: {models_dir}")
 
 
 if __name__ == "__main__":
