@@ -127,11 +127,11 @@ def main():
             paper_embeddings_file=data_dir / "paper_embeddings.parquet",
             citation_embeddings_dir=data_dir / "train",
             citations_batch_size=cfg.data.citations_batch_size,
-            return_metadata=False,
+            return_metadata=True,
         ),
         D0=dist.Normal(loc=0.0, scale=1.0),
         extract_target=lambda x: x[1],
-        extract_key=None,
+        extract_key=lambda x: x[2]["reference_id"],
         extract_conditioning=lambda x: x[0],
     )
 
