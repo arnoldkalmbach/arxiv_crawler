@@ -141,6 +141,8 @@ def load_rectflow_model(
     rectified_flow = RectifiedFlow(
         data_shape=(conditioning_model.config.hidden_size,),
         velocity_field=velocity_model,
+        train_time_weight="uniform",  # FIXME
+        train_time_distribution="lognormal",
         device=device,
     )
 

@@ -4,6 +4,8 @@ data
 *.pth
 *.tfevents*
 *.pth
+runs/
+runs_rectflow/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

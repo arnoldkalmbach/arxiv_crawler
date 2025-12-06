@@ -22,6 +22,8 @@ def train_epoch(
     save_steps: int = 500,
     save_dir: Optional[Path] = None,
     start_step: int = 0,
+    lr_scheduler=None,
+    max_grad_norm: float = 1.0,
 ) -> int:
     """
     Train model for one epoch.
@@ -36,6 +38,8 @@ def train_epoch(
         save_steps: Save checkpoint every N steps
         save_dir: Directory to save checkpoints (required if save_steps > 0)
         start_step: Starting step number (for resuming training)
+        lr_scheduler: Optional learning rate scheduler stepped each iteration
+        max_grad_norm: Maximum gradient norm for clipping (None/<=0 disables clipping)
 
     Returns:
         Final step number after this epoch
@@ -70,12 +74,22 @@ def train_epoch(
         )
 
         loss.backward()
+        grad_norm = torch.nn.utils.clip_grad_norm_(
+            rectified_flow.velocity_field.parameters(),
+            max_grad_norm if max_grad_norm is not None and max_grad_norm > 0 else float("inf"),
+        )
         optimizer.step()
+        if lr_scheduler is not None:
+            lr_scheduler.step()
         step += 1
 
         # Log to TensorBoard
         if writer is not None:
             writer.add_scalar("Loss/train", loss.item(), step)
+            if grad_norm is not None:
+                writer.add_scalar("GradNorm/total", float(grad_norm), step)
+            if lr_scheduler is not None and optimizer.param_groups:
+                writer.add_scalar("LR/main", optimizer.param_groups[0]["lr"], step)
 
         # Console logging
         if step % log_steps == 0:
@@ -100,6 +114,8 @@ def train(
     save_steps: int = 500,
     save_dir: Optional[Path] = None,
     tensorboard_dir: Optional[Path] = None,
+    lr_scheduler=None,
+    max_grad_norm: float = 1.0,
 ) -> RectifiedFlow:
     """
     Train model for multiple epochs.
@@ -114,6 +130,8 @@ def train(
         save_steps: Save checkpoint every N steps
         save_dir: Directory to save checkpoints
         tensorboard_dir: Directory for TensorBoard logs
+        lr_scheduler: Optional learning rate scheduler stepped each iteration
+        max_grad_norm: Maximum gradient norm for clipping (None/<=0 disables clipping)
 
     Returns:
         Trained model
@@ -135,6 +153,8 @@ def train(
             save_steps=save_steps,
             save_dir=save_dir,
             start_step=step,
+            lr_scheduler=lr_scheduler,
+            max_grad_norm=max_grad_norm,
         )
 
     if writer is not None:

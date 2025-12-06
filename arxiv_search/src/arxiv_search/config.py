@@ -85,6 +85,9 @@ class RectflowTrainingConfig:
     num_workers: int = 6
     num_epochs: int = 100
     learning_rate: float = 2e-4
+    warmup_steps: int = 1000
+    min_lr_ratio: float = 0.1  # Final LR as a fraction of base LR after cosine decay
+    max_grad_norm: float = 1.0
 
     # Time weighting
     train_time_weight: str = "linear"  # "linear" or "exponential"
