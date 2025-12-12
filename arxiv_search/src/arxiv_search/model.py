@@ -144,6 +144,7 @@ def load_rectflow_model(
         train_time_weight="uniform",  # FIXME
         train_time_distribution="lognormal",
         device=device,
+        is_independent_coupling=False
     )
 
     return rectified_flow

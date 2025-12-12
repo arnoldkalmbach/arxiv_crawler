@@ -146,6 +146,7 @@ def main():
             extract_target=lambda x: x[1],
             extract_key=lambda x: x[2]["reference_id"],
             extract_conditioning=lambda x: x[0],
+            extract_metadata=lambda x: x[2],
         )
         collate_fn = get_coupling_collate_fn(
             max_length=cfg.data.max_length,
