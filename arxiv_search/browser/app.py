@@ -10,11 +10,18 @@ from datetime import datetime
 from pathlib import Path
 
 import polars as pl
+import torch
 from arxiv_crawler import parse_tei_xml
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from markupsafe import Markup
+from omegaconf import OmegaConf
+from pydantic import BaseModel
+from sentence_transformers import SentenceTransformer
+
+from arxiv_search.inference import Inference
+from arxiv_search.model import load_model
 
 # Paths
 BROWSER_DIR = Path(__file__).parent
@@ -24,6 +31,20 @@ CRAWLER_STATE_FILE = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2"
 PAPERS_FILE = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "papers.jsonl"
 XML_DOCS_DIR = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "xml_docs"
 # PAPERS_FILE = DATA_DIR / "papers.jsonl"
+
+# Semantic search / inference paths
+MODEL_RUN_DIR = BROWSER_DIR.parent / "runs" / "lr1e-03_bs256_layers1_hidden768_heads12_20251114_151931"
+MODEL_CHECKPOINT = MODEL_RUN_DIR / "checkpoints" / "model_3500.pth"
+MODEL_CONFIG_FILE = MODEL_RUN_DIR / "config.yaml"
+PAPER_EMBEDDINGS_FILE = DATA_DIR / "paper_embeddings.parquet"
+# Force CPU for inference (GPU compatibility/memory issues)
+DEVICE = "cpu"
+
+# Load model config from the run's config.yaml
+model_cfg = OmegaConf.load(MODEL_CONFIG_FILE)
+BASEMODEL_NAME = model_cfg.data.basemodel_name
+INFERENCE_MAX_LENGTH = model_cfg.data.max_length
+INFERENCE_PAD_TO_MULTIPLE_OF = model_cfg.data.pad_to_multiple_of
 
 # Initialize FastAPI app
 app = FastAPI(title="arXiv Browser")
@@ -67,15 +88,113 @@ def build_cited_by_index(papers: pl.DataFrame) -> dict[str, list[str]]:
 papers_df: pl.DataFrame = None  # type: ignore
 arxiv_id_index: dict[str, dict] = {}
 cited_by_index: dict[str, list[str]] = {}
+inference: Inference | None = None
 
 
 @app.on_event("startup")
 async def startup_event():
-    global papers_df, arxiv_id_index, cited_by_index
+    global papers_df, arxiv_id_index, cited_by_index, inference
     papers_df = load_papers()
     arxiv_id_index = build_arxiv_id_index(papers_df)
     cited_by_index = build_cited_by_index(papers_df)
     print(f"Built index with {len(arxiv_id_index)} papers, {len(cited_by_index)} cited papers")
+
+    # Initialize semantic search inference
+    print(f"Loading semantic search models on {DEVICE}...")
+    print(f"  Model checkpoint: {MODEL_CHECKPOINT}")
+    print(f"  Paper embeddings: {PAPER_EMBEDDINGS_FILE}")
+
+    general_model = SentenceTransformer(BASEMODEL_NAME, device=DEVICE)
+    task_model = load_model(
+        str(MODEL_CHECKPOINT),
+        device=DEVICE,
+        hidden_size=model_cfg.model.hidden_size,
+        num_hidden_layers=model_cfg.model.num_hidden_layers,
+        num_attention_heads=model_cfg.model.num_attention_heads,
+        intermediate_size=model_cfg.model.intermediate_size,
+        max_position_embeddings=model_cfg.model.max_position_embeddings,
+    )
+
+    inference = Inference(
+        general_model=general_model,
+        task_model=task_model,
+        max_length=INFERENCE_MAX_LENGTH,
+        pad_to_multiple_of=INFERENCE_PAD_TO_MULTIPLE_OF,
+        device=DEVICE,
+    )
+    inference.build_index(PAPER_EMBEDDINGS_FILE)
+    print(f"Semantic search ready with {len(inference.paper_embeddings)} paper embeddings")
+
+
+# Pydantic models for API
+class SemanticSearchRequest(BaseModel):
+    arxiv_id: str
+    selected_text: str
+    top_k: int = 5
+
+
+@app.post("/api/semantic-search")
+async def semantic_search(request: SemanticSearchRequest):
+    """
+    Find papers semantically similar to the selected text in the context of a paper.
+
+    Uses the paper's title+abstract as general context and the selected text as task context.
+    Returns top-k matching papers from the dataset, excluding the context paper itself.
+    Each result is labeled as "existing" (already cited) or "proposed" (not cited but relevant).
+    """
+    # Get the paper to build general context
+    paper = arxiv_id_index.get(request.arxiv_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail=f"Paper {request.arxiv_id} not found")
+
+    # Build context in Specter format: "{title}[SEP]{abstract}"
+    title = paper.get("title", "")
+    abstract = paper.get("abstract", "")
+    general_context = f"{title}[SEP]{abstract}"
+    task_context = request.selected_text
+
+    print(f"[semantic-search] arxiv_id={request.arxiv_id}")
+    print(f"[semantic-search] selected_text={task_context[:100]}...")
+
+    # Get set of arxiv_ids that this paper already cites
+    citations = paper.get("citations") or []
+    cited_arxiv_ids = {cit.get("arxiv_id") for cit in citations if cit.get("arxiv_id")}
+    print(f"[semantic-search] Paper cites {len(cited_arxiv_ids)} papers with arxiv_ids")
+
+    # Overfetch by 1 to allow filtering out the context paper
+    search_contexts = [(general_context, task_context)]
+    matches_df = inference.get_matches(search_contexts, top_k=request.top_k + 1)
+
+    # Filter to first query's results and build response
+    query_matches = matches_df.filter(matches_df["query_index"] == 0)
+
+    results = []
+    for row in query_matches.iter_rows(named=True):
+        match_arxiv_id = row.get("arxiv_id", "")
+
+        # Skip the context paper itself
+        if match_arxiv_id == request.arxiv_id:
+            continue
+
+        # Look up full paper info from our index
+        match_paper = arxiv_id_index.get(match_arxiv_id, {})
+
+        # Determine if this is an existing citation or a proposed one
+        citation_type = "existing" if match_arxiv_id in cited_arxiv_ids else "proposed"
+
+        results.append({
+            "arxiv_id": match_arxiv_id,
+            "title": match_paper.get("title", row.get("title", "Unknown")),
+            "abstract": match_paper.get("abstract", ""),
+            "distance": float(row.get("distance", 0.0)),
+            "citation_type": citation_type,
+        })
+
+    # Limit to top_k after filtering
+    results = results[:request.top_k]
+
+    print(f"[semantic-search] Found {len(results)} matches")
+    return JSONResponse(content={"matches": results})
 
 
 @app.get("/", response_class=HTMLResponse)
