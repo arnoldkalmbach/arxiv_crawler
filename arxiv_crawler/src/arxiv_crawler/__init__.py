@@ -1,6 +1,5 @@
 from arxiv_crawler.arxiv_util import (
     get_arxiv_metadata,
-    extract_arxiv_text_simple,
     normalize_arxiv_id,
     CitationExtractor,
 )
@@ -14,7 +13,6 @@ from arxiv_crawler.models import (
 
 __all__ = [
     "get_arxiv_metadata",
-    "extract_arxiv_text_simple",
     "normalize_arxiv_id",
     "CitationExtractor",
     "ArxivCrawler",

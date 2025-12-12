@@ -5,8 +5,6 @@ import feedparser
 import tempfile
 from io import BytesIO
 from lxml import etree
-from pdfminer.high_level import extract_text
-from pdfminer.layout import LAParams
 
 from arxiv_crawler.models import Citation, CitationDetails
 
@@ -24,43 +22,46 @@ def normalize_arxiv_id(arxiv_id: str) -> str:
         return arxiv_id.rsplit("v", 1)[0]
     return arxiv_id
 
+# TODO: pdfminer is causing import errors
+# leaving this for reference in case I need it again later
+# from pdfminer.high_level import extract_text
+# from pdfminer.layout import LAParams
+# def extract_arxiv_text_simple(arxiv_url_or_path: str) -> str | None:
+#     """
+#     Extract full text from an arXiv PDF URL or file path using PDFMiner.
 
-def extract_arxiv_text_simple(arxiv_url_or_path: str) -> str | None:
-    """
-    Extract full text from an arXiv PDF URL or file path using PDFMiner.
+#     Args:
+#         arxiv_url_or_path: URL to the arXiv PDF or path to a local PDF file
 
-    Args:
-        arxiv_url_or_path: URL to the arXiv PDF or path to a local PDF file
+#     Returns:
+#         Extracted text as string, or None if extraction fails
+#     """
+#     try:
+#         laparams = LAParams(
+#             line_margin=0.5,
+#             word_margin=0.1,
+#             char_margin=2.0,
+#             boxes_flow=0.5,
+#         )
 
-    Returns:
-        Extracted text as string, or None if extraction fails
-    """
-    try:
-        laparams = LAParams(
-            line_margin=0.5,
-            word_margin=0.1,
-            char_margin=2.0,
-            boxes_flow=0.5,
-        )
+#         # Check if it's a URL or a file path
+#         if arxiv_url_or_path.startswith("http://") or arxiv_url_or_path.startswith("https://"):
+#             # Download PDF
+#             response = requests.get(arxiv_url_or_path, timeout=30)
+#             if response.status_code != 200:
+#                 print(f"Failed to download PDF: {response.status_code}")
+#                 return None
+#             pdf_file = BytesIO(response.content)
+#             text = extract_text(pdf_file, laparams=laparams)
+#         else:
+#             # Extract from local file
+#             text = extract_text(arxiv_url_or_path, laparams=laparams)
 
-        # Check if it's a URL or a file path
-        if arxiv_url_or_path.startswith("http://") or arxiv_url_or_path.startswith("https://"):
-            # Download PDF
-            response = requests.get(arxiv_url_or_path, timeout=30)
-            if response.status_code != 200:
-                print(f"Failed to download PDF: {response.status_code}")
-                return None
-            pdf_file = BytesIO(response.content)
-            text = extract_text(pdf_file, laparams=laparams)
-        else:
-            # Extract from local file
-            text = extract_text(arxiv_url_or_path, laparams=laparams)
+#         return text.strip()
 
-        return text.strip()
-
-    except Exception as e:
-        print(f"Error extracting text: {str(e)}")
-        return None
+#     except Exception as e:
+#         print(f"Error extracting text: {str(e)}")
+#         return None
 
 
 def get_arxiv_metadata(arxiv_ids: list[str]) -> list[dict[str, Any]]:

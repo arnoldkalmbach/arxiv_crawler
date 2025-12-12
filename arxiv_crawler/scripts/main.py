@@ -8,13 +8,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--seed-ids-file",
         type=str,
-        default="data/initial_arxiv_ids.json",
+        default="data/v2/initial_arxiv_ids.json",
         help="Path to JSON file with seed arxiv IDs",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="data",
+        default="data/v2",
         help="Output directory for crawled data",
     )
     parser.add_argument(
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-papers",
         type=int,
-        default=2000,
+        default=20000,
         help="Maximum number of papers to crawl",
     )
     parser.add_argument(
