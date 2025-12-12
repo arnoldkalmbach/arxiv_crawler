@@ -527,8 +527,24 @@ async def crawler_status(
     except (ValueError, TypeError):
         last_updated_display = str(last_updated)
 
-    # Build queued papers list with priority info
-    queued_papers = []
+    # Build combined list: processed papers (in_dataset=True) + queued papers (in_dataset=False)
+    processed_set = set(processed_ids)
+    all_papers = []
+
+    # Add processed papers (no priority/depth info available after processing)
+    for arxiv_id in processed_ids:
+        paper_info = arxiv_id_index.get(arxiv_id, {})
+        all_papers.append(
+            {
+                "arxiv_id": arxiv_id,
+                "priority": None,
+                "depth": None,
+                "title": paper_info.get("title"),
+                "in_dataset": True,
+            }
+        )
+
+    # Add queued papers
     for arxiv_id, priority_data in queued_ids.items():
         priority = priority_data[0] if isinstance(priority_data, list) and len(priority_data) > 0 else 0
         depth = priority_data[1] if isinstance(priority_data, list) and len(priority_data) > 1 else 0
@@ -545,19 +561,30 @@ async def crawler_status(
 
     # Apply filter
     if filter == "in_dataset":
-        queued_papers = [p for p in queued_papers if p["in_dataset"]]
+        queued_papers = [p for p in all_papers if p["in_dataset"]]
     elif filter == "pending":
-        queued_papers = [p for p in queued_papers if not p["in_dataset"]]
+        queued_papers = [p for p in all_papers if not p["in_dataset"]]
+    else:
+        queued_papers = all_papers
 
-    # Count for filter badges (before filtering)
-    in_dataset_count = sum(1 for p in queued_ids if p in arxiv_id_index)
-    pending_count = len(queued_ids) - in_dataset_count
+    # Count for filter badges
+    in_dataset_count = len(processed_ids)
+    pending_count = len(queued_ids)
 
-    # Sort queued papers
+    # Sort queued papers (handle None values for processed papers)
+    def sort_key_priority(x):
+        p = x["priority"] if x["priority"] is not None else -1
+        return (-p, x["arxiv_id"])
+
+    def sort_key_depth(x):
+        d = x["depth"] if x["depth"] is not None else -1
+        p = x["priority"] if x["priority"] is not None else -1
+        return (d, -p, x["arxiv_id"])
+
     if sort == "priority":
-        queued_papers.sort(key=lambda x: (-x["priority"], x["arxiv_id"]))
+        queued_papers.sort(key=sort_key_priority)
     elif sort == "depth":
-        queued_papers.sort(key=lambda x: (x["depth"], -x["priority"], x["arxiv_id"]))
+        queued_papers.sort(key=sort_key_depth)
     elif sort == "id":
         queued_papers.sort(key=lambda x: x["arxiv_id"])
 
