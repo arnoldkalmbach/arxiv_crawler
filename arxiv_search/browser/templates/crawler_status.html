@@ -320,5 +320,12 @@
         color: var(--text-secondary);
     }
 </style>
+
+<script>
+    // Auto-refresh the page every 30 seconds to keep crawler status updated
+    setTimeout(function() {
+        window.location.reload();
+    }, 30000);
+</script>
 {% endblock %}
 
