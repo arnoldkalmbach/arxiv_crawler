@@ -1,12 +1,13 @@
 """Training and evaluation functions for citation embedding model."""
 
+import random
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
 import torch
 from rectified_flow import RectifiedFlow
-from rectified_flow.samplers import SDESampler
+from rectified_flow.samplers import CurvedEulerSampler
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
@@ -188,9 +189,10 @@ def evaluate(
         Dictionary with evaluation metrics and examples
     """
     rectified_flow.velocity_field.eval()
-    sde_sampler = SDESampler(rectified_flow=rectified_flow)
+    sde_sampler = CurvedEulerSampler(rectified_flow=rectified_flow)
 
     all_cosine_sims = []
+    all_examples = []
     num_samples = 0
 
     with torch.no_grad():
@@ -208,7 +210,7 @@ def evaluate(
             y = batch["inputs"].to(device)  # Conditioning embeddings
             y_attention_mask = batch["attention_mask"].to(device)
 
-            sde_sampler.sample_loop(num_steps=100, x_0=X0, y=y, attention_mask=y_attention_mask)
+            sde_sampler.sample_loop(num_steps=50, x_0=X0, y=y, attention_mask=y_attention_mask)
 
             traj = sde_sampler.trajectories
 
@@ -219,9 +221,15 @@ def evaluate(
             all_cosine_sims.append(cosine_sims.cpu())
 
             # Collect examples with metadata if available
-            # Note: metadata would need to be passed through the coupling dataset
-            # For now, we'll skip metadata collection for rectflow evaluation
-            # TODO: Add metadata support to coupling dataset collate function
+            metadata_list = batch.get("metadata", None)
+            if metadata_list is not None:
+                for i, meta in enumerate(metadata_list):
+                    all_examples.append(
+                        {
+                            "cosine_similarity": cosine_sims[i].item(),
+                            "metadata": meta,
+                        }
+                    )
 
             num_samples += y.size(0)
 
@@ -232,6 +240,15 @@ def evaluate(
 
     # Concatenate all cosine similarities
     all_cosine_sims = torch.cat(all_cosine_sims).numpy()
+
+    # Sample random examples
+    sampled_examples = []
+    if all_examples and num_examples > 0:
+        num_to_sample = min(num_examples, len(all_examples))
+        sampled_indices = random.sample(range(len(all_examples)), num_to_sample)
+        sampled_examples = [all_examples[i] for i in sampled_indices]
+        # Sort by cosine similarity for easier reading
+        sampled_examples.sort(key=lambda x: x["cosine_similarity"], reverse=True)
 
     # Compute metrics
     metrics = {
@@ -246,6 +263,7 @@ def evaluate(
             "p75": float(np.percentile(all_cosine_sims, 75)),
             "p95": float(np.percentile(all_cosine_sims, 95)),
         },
+        "examples": sampled_examples,
     }
 
     return metrics
