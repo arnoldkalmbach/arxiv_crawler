@@ -10,6 +10,12 @@ from arxiv_crawler.models import (
     ProcessedCitation,
     ProcessedPaper,
 )
+from arxiv_crawler.tei_parser import (
+    parse_tei_xml,
+    ParsedTeiDocument,
+    BibEntry,
+    TocEntry,
+)
 
 __all__ = [
     "get_arxiv_metadata",
@@ -20,4 +26,8 @@ __all__ = [
     "CitationDetails",
     "ProcessedCitation",
     "ProcessedPaper",
+    "parse_tei_xml",
+    "ParsedTeiDocument",
+    "BibEntry",
+    "TocEntry",
 ]
