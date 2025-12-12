@@ -504,9 +504,8 @@ async def crawler_status(
 @app.get("/crawler-status", response_class=HTMLResponse)
 async def crawler_status(
     request: Request,
-    sort: str = "priority",
-    show_processed: bool = False,
-    filter: str = "all",
+    queued_sort: str = "priority",
+    dataset_sort: str = "cited_by",
 ):
     """Display the status of the crawler state file."""
     if not CRAWLER_STATE_FILE.exists():
@@ -608,14 +607,11 @@ async def crawler_status(
             "processed_count": len(processed_ids),
             "failed_count": len(failed_ids),
             "queued_count": len(queued_ids),
-            "in_dataset_count": in_dataset_count,
-            "pending_count": pending_count,
             "last_updated": last_updated_display,
+            "in_dataset_papers": in_dataset_papers,
             "queued_papers": queued_papers,
-            "processed_papers": processed_papers,
             "failed_ids": failed_ids,
-            "sort": sort,
-            "filter": filter,
-            "show_processed": show_processed,
+            "queued_sort": queued_sort,
+            "dataset_sort": dataset_sort,
         },
     )
