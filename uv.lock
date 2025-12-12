@@ -221,7 +221,7 @@ dev = [
 [[package]]
 name = "arxiv-crawler"
 version = "0.1.0"
-source = { directory = "../arxiv_crawler" }
+source = { editable = "arxiv_crawler" }
 dependencies = [
     { name = "bibtexparser" },
     { name = "feedparser" },
@@ -233,6 +233,15 @@ dependencies = [
     { name = "polars", extra = ["pyarrow"] },
     { name = "pydantic" },
     { name = "tqdm" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "altair" },
+    { name = "jupyter" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
