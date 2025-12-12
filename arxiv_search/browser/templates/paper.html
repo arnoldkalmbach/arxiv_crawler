@@ -38,13 +38,7 @@
     <p class="abstract">{{ paper.abstract }}</p>
     
     <details class="collapsible-section" open>
-        <summary class="section-title">Cited By 
-            {% if total_cited_by and total_cited_by > citing_papers|length %}
-                ({{ citing_papers|length }} in dataset / {{ total_cited_by }} total)
-            {% else %}
-                ({{ citing_papers|length }})
-            {% endif %}
-        </summary>
+        <summary class="section-title">Cited By ({{ citing_papers|length }})</summary>
         {% if citing_papers %}
         <ul class="citation-list">
             {% for citer in citing_papers %}

@@ -271,10 +271,6 @@ async def paper_detail(request: Request, arxiv_id: str):
                 }
             )
 
-    # Get total citation count - how many papers cite this one (from num_citations field if available)
-    # This includes citations from papers not in our dataset
-    total_cited_by = paper.get("num_citations", len(citing_papers))
-
     return templates.TemplateResponse(
         "paper.html",
         {
@@ -283,7 +279,6 @@ async def paper_detail(request: Request, arxiv_id: str):
             "internal_citations": internal_citations,
             "external_citations": external_citations,
             "citing_papers": citing_papers,
-            "total_cited_by": total_cited_by,
         },
     )
 
