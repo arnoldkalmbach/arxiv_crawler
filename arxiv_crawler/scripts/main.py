@@ -32,7 +32,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--rate-limit-delay",
         type=float,
-        default=1.0,
+        default=3.0,
         help="Seconds between arxiv API calls",
     )
     parser.add_argument(

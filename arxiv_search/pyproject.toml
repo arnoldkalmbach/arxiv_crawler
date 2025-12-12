@@ -25,7 +25,7 @@ dependencies = [
   "fastapi>=0.115.0",
   "uvicorn>=0.34.0",
   "jinja2>=3.1.0",
-  "arxiv-crawler @ file:///${PROJECT_ROOT}/../arxiv_crawler",
+  "arxiv-crawler",  # resolved from workspace
 ]
 
 [dependency-groups]
@@ -36,6 +36,9 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff>=0.14.1",
 ]
+
+[tool.uv.sources]
+arxiv-crawler = { workspace = true }
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
