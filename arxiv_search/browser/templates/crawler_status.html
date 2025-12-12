@@ -11,7 +11,7 @@
 <div class="stats-grid">
     <div class="stat-card processed">
         <div class="stat-number">{{ processed_count }}</div>
-        <div class="stat-label">Processed</div>
+        <div class="stat-label">In Dataset</div>
     </div>
     <div class="stat-card queued">
         <div class="stat-number">{{ queued_count }}</div>
@@ -25,20 +25,14 @@
 
 <div class="queue-section">
     <div class="section-header">
-        <h3 class="section-title">Queued Papers</h3>
-        <div class="controls-row">
-            <div class="filter-controls">
-                Filter: 
-                <a href="?filter=all&sort={{ sort }}{% if show_processed %}&show_processed=true{% endif %}" class="filter-link {% if filter == 'all' %}active{% endif %}">All <span class="count">{{ in_dataset_count + pending_count }}</span></a>
-                <a href="?filter=in_dataset&sort={{ sort }}{% if show_processed %}&show_processed=true{% endif %}" class="filter-link {% if filter == 'in_dataset' %}active{% endif %}">In Dataset <span class="count">{{ in_dataset_count }}</span></a>
-                <a href="?filter=pending&sort={{ sort }}{% if show_processed %}&show_processed=true{% endif %}" class="filter-link {% if filter == 'pending' %}active{% endif %}">Pending <span class="count">{{ pending_count }}</span></a>
-            </div>
-            <div class="sort-controls">
-                Sort by: 
-                <a href="?sort=priority&filter={{ filter }}{% if show_processed %}&show_processed=true{% endif %}" class="sort-link {% if sort == 'priority' %}active{% endif %}">Priority</a>
-                <a href="?sort=depth&filter={{ filter }}{% if show_processed %}&show_processed=true{% endif %}" class="sort-link {% if sort == 'depth' %}active{% endif %}">Depth</a>
-                <a href="?sort=id&filter={{ filter }}{% if show_processed %}&show_processed=true{% endif %}" class="sort-link {% if sort == 'id' %}active{% endif %}">ID</a>
-            </div>
+        <h3 class="section-title">In Dataset <span class="count">({{ in_dataset_papers|length }})</span></h3>
+        <div class="sort-controls">
+            Sort by: 
+            <a href="?dataset_sort=crawled&queued_sort={{ queued_sort }}" class="sort-link {% if dataset_sort == 'crawled' %}active{% endif %}">Crawled</a>
+            <a href="?dataset_sort=cited_by&queued_sort={{ queued_sort }}" class="sort-link {% if dataset_sort == 'cited_by' %}active{% endif %}">Cited By</a>
+            <a href="?dataset_sort=internal&queued_sort={{ queued_sort }}" class="sort-link {% if dataset_sort == 'internal' %}active{% endif %}">Internal</a>
+            <a href="?dataset_sort=external&queued_sort={{ queued_sort }}" class="sort-link {% if dataset_sort == 'external' %}active{% endif %}">External</a>
+            <a href="?dataset_sort=id&queued_sort={{ queued_sort }}" class="sort-link {% if dataset_sort == 'id' %}active{% endif %}">ID</a>
         </div>
     </div>
     
@@ -47,32 +41,59 @@
             <thead>
                 <tr>
                     <th>arXiv ID</th>
-                    <th>Priority</th>
-                    <th>Depth</th>
                     <th>Title</th>
-                    <th>Status</th>
+                    <th class="num-col">Cited By</th>
+                    <th class="num-col">Internal</th>
+                    <th class="num-col">External</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for paper in in_dataset_papers %}
+                <tr>
+                    <td>
+                        <a href="/paper/{{ paper.arxiv_id }}">{{ paper.arxiv_id }}</a>
+                    </td>
+                    <td class="title-cell">{{ paper.title or "—" }}</td>
+                    <td class="num-cell">{{ paper.cited_by }}</td>
+                    <td class="num-cell">{{ paper.internal_citations }}</td>
+                    <td class="num-cell">{{ paper.external_citations }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="queue-section">
+    <div class="section-header">
+        <h3 class="section-title">Queued Papers <span class="count">({{ queued_papers|length }})</span></h3>
+        <div class="sort-controls">
+            Sort by: 
+            <a href="?queued_sort=priority&dataset_sort={{ dataset_sort }}" class="sort-link {% if queued_sort == 'priority' %}active{% endif %}">Priority</a>
+            <a href="?queued_sort=depth&dataset_sort={{ dataset_sort }}" class="sort-link {% if queued_sort == 'depth' %}active{% endif %}">Depth</a>
+            <a href="?queued_sort=id&dataset_sort={{ dataset_sort }}" class="sort-link {% if queued_sort == 'id' %}active{% endif %}">ID</a>
+        </div>
+    </div>
+    
+    <div class="queue-table-container">
+        <table class="queue-table">
+            <thead>
+                <tr>
+                    <th>arXiv ID</th>
+                    <th class="num-col">Priority</th>
+                    <th class="num-col">Depth</th>
+                    <th>Title</th>
                 </tr>
             </thead>
             <tbody>
                 {% for paper in queued_papers %}
                 <tr>
                     <td>
-                        {% if paper.in_dataset %}
-                        <a href="/paper/{{ paper.arxiv_id }}">{{ paper.arxiv_id }}</a>
-                        {% else %}
                         <a href="https://arxiv.org/abs/{{ paper.arxiv_id }}" class="external-link" target="_blank">{{ paper.arxiv_id }}</a>
-                        {% endif %}
                     </td>
-                    <td class="priority-cell">{{ paper.priority if paper.priority is not none else "—" }}</td>
-                    <td class="depth-cell">{{ paper.depth if paper.depth is not none else "—" }}</td>
+                    <td class="num-cell">{{ paper.priority }}</td>
+                    <td class="num-cell">{{ paper.depth }}</td>
                     <td class="title-cell">{{ paper.title or "—" }}</td>
-                    <td>
-                        {% if paper.in_dataset %}
-                        <span class="badge in-dataset">In Dataset</span>
-                        {% else %}
-                        <span class="badge pending">Pending</span>
-                        {% endif %}
-                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -92,26 +113,6 @@
     </ul>
 </details>
 {% endif %}
-
-<details class="collapsible-section" {% if show_processed %}open{% endif %}>
-    <summary class="section-title">Processed Papers ({{ processed_count }})</summary>
-    {% if not show_processed %}
-    <p class="load-hint"><a href="?sort={{ sort }}&filter={{ filter }}&show_processed=true">Load processed papers list</a></p>
-    {% else %}
-    <ul class="id-list">
-        {% for paper in processed_papers %}
-        <li>
-            {% if paper.in_dataset %}
-            <a href="/paper/{{ paper.arxiv_id }}">{{ paper.arxiv_id }}</a>
-            {% if paper.title %}<span class="paper-title-hint">{{ paper.title[:60] }}{% if paper.title|length > 60 %}...{% endif %}</span>{% endif %}
-            {% else %}
-            <a href="https://arxiv.org/abs/{{ paper.arxiv_id }}" class="external-link" target="_blank">{{ paper.arxiv_id }}</a>
-            {% endif %}
-        </li>
-        {% endfor %}
-    </ul>
-    {% endif %}
-</details>
 
 <style>
     .status-header {
@@ -181,7 +182,7 @@
     .section-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         margin-bottom: 1rem;
         flex-wrap: wrap;
         gap: 1rem;
@@ -191,20 +192,17 @@
         margin: 0;
     }
     
-    .controls-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1.5rem;
-        align-items: center;
+    .section-title .count {
+        font-weight: 400;
+        color: var(--text-secondary);
+        font-size: 0.9em;
     }
     
-    .filter-controls,
     .sort-controls {
         color: var(--text-secondary);
         font-size: 0.9rem;
     }
     
-    .filter-link,
     .sort-link {
         padding: 0.25rem 0.5rem;
         margin-left: 0.25rem;
@@ -212,28 +210,24 @@
         background: var(--bg-tertiary);
     }
     
-    .filter-link.active,
     .sort-link.active {
         background: var(--accent);
         color: var(--bg-primary);
     }
     
-    .filter-link:hover,
     .sort-link:hover {
         text-decoration: none;
     }
     
-    .filter-link .count {
-        opacity: 0.7;
-        font-size: 0.8rem;
-    }
-    
-    .filter-link.active .count {
-        opacity: 1;
-    }
-    
     .queue-table-container {
-        overflow-x: auto;
+        overflow: auto;
+        max-height: 600px;
+    }
+    
+    .queue-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 1;
     }
     
     .queue-table {
@@ -255,12 +249,15 @@
         background: var(--bg-tertiary);
     }
     
+    .queue-table th.num-col {
+        text-align: center;
+    }
+    
     .queue-table tbody tr:hover {
         background: var(--bg-tertiary);
     }
     
-    .priority-cell,
-    .depth-cell {
+    .num-cell {
         font-family: 'SF Mono', 'Monaco', monospace;
         text-align: center;
         min-width: 60px;
@@ -274,31 +271,12 @@
         color: var(--text-secondary);
     }
     
-    .badge {
-        display: inline-block;
-        padding: 0.2rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-    
-    .badge.in-dataset {
-        background: rgba(63, 185, 80, 0.15);
-        color: var(--success);
-    }
-    
-    .badge.pending {
-        background: rgba(210, 153, 34, 0.15);
-        color: var(--warning);
-    }
-    
     .id-list {
         list-style: none;
         padding: 0;
         margin-top: 1rem;
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 0.5rem;
     }
     
@@ -309,15 +287,17 @@
         font-size: 0.9rem;
     }
     
-    .paper-title-hint {
-        color: var(--text-muted);
-        margin-left: 0.5rem;
-        font-size: 0.85rem;
+    .collapsible-section {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
     }
     
-    .load-hint {
-        margin-top: 1rem;
-        color: var(--text-secondary);
+    .collapsible-section summary {
+        cursor: pointer;
+        font-weight: 600;
     }
 </style>
 
@@ -328,4 +308,3 @@
     }, 30000);
 </script>
 {% endblock %}
-

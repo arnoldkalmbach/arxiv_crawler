@@ -291,9 +291,8 @@ async def paper_detail(request: Request, arxiv_id: str):
 @app.get("/crawler-status", response_class=HTMLResponse)
 async def crawler_status(
     request: Request,
-    sort: str = "priority",
-    show_processed: bool = False,
-    filter: str = "all",
+    queued_sort: str = "priority",
+    dataset_sort: str = "cited_by",
 ):
     """Display the status of the crawler state file."""
     if not CRAWLER_STATE_FILE.exists():
@@ -314,73 +313,59 @@ async def crawler_status(
     except (ValueError, TypeError):
         last_updated_display = str(last_updated)
 
-    # Build combined list: processed papers (in_dataset=True) + queued papers (in_dataset=False)
-    processed_set = set(processed_ids)
-    all_papers = []
-    
-    # Add processed papers (no priority/depth info available after processing)
+    # Build in-dataset papers list with citation counts
+    in_dataset_papers = []
     for arxiv_id in processed_ids:
         paper_info = arxiv_id_index.get(arxiv_id, {})
-        all_papers.append({
-            "arxiv_id": arxiv_id,
-            "priority": None,
-            "depth": None,
-            "title": paper_info.get("title"),
-            "in_dataset": True,
-        })
-    
-    # Add queued papers
+        if paper_info:
+            # Count citations
+            citations = paper_info.get("citations") or []
+            internal_citations = sum(
+                1 for c in citations if c.get("arxiv_id") and c.get("arxiv_id") in arxiv_id_index
+            )
+            external_citations = len(citations) - internal_citations
+            cited_by_count = len(cited_by_index.get(arxiv_id, []))
+            
+            in_dataset_papers.append({
+                "arxiv_id": arxiv_id,
+                "title": paper_info.get("title"),
+                "internal_citations": internal_citations,
+                "external_citations": external_citations,
+                "cited_by": cited_by_count,
+            })
+
+    # Sort in-dataset papers (default "crawled" keeps original order from processed_ids)
+    if dataset_sort == "cited_by":
+        in_dataset_papers.sort(key=lambda x: (-x["cited_by"], x["arxiv_id"]))
+    elif dataset_sort == "internal":
+        in_dataset_papers.sort(key=lambda x: (-x["internal_citations"], x["arxiv_id"]))
+    elif dataset_sort == "external":
+        in_dataset_papers.sort(key=lambda x: (-x["external_citations"], x["arxiv_id"]))
+    elif dataset_sort == "id":
+        in_dataset_papers.sort(key=lambda x: x["arxiv_id"])
+    elif dataset_sort == "crawled":
+        pass  # Already in crawled order from iteration over processed_ids
+
+    # Build queued papers list (pending only)
+    queued_papers = []
     for arxiv_id, priority_data in queued_ids.items():
         priority = priority_data[0] if isinstance(priority_data, list) and len(priority_data) > 0 else 0
         depth = priority_data[1] if isinstance(priority_data, list) and len(priority_data) > 1 else 0
         paper_info = arxiv_id_index.get(arxiv_id, {})
-        all_papers.append({
+        queued_papers.append({
             "arxiv_id": arxiv_id,
             "priority": priority,
             "depth": depth,
             "title": paper_info.get("title"),
-            "in_dataset": False,
         })
 
-    # Apply filter
-    if filter == "in_dataset":
-        queued_papers = [p for p in all_papers if p["in_dataset"]]
-    elif filter == "pending":
-        queued_papers = [p for p in all_papers if not p["in_dataset"]]
-    else:
-        queued_papers = all_papers
-
-    # Count for filter badges
-    in_dataset_count = len(processed_ids)
-    pending_count = len(queued_ids)
-
-    # Sort queued papers (handle None values for processed papers)
-    def sort_key_priority(x):
-        p = x["priority"] if x["priority"] is not None else -1
-        return (-p, x["arxiv_id"])
-    
-    def sort_key_depth(x):
-        d = x["depth"] if x["depth"] is not None else -1
-        p = x["priority"] if x["priority"] is not None else -1
-        return (d, -p, x["arxiv_id"])
-    
-    if sort == "priority":
-        queued_papers.sort(key=sort_key_priority)
-    elif sort == "depth":
-        queued_papers.sort(key=sort_key_depth)
-    elif sort == "id":
+    # Sort queued papers
+    if queued_sort == "priority":
+        queued_papers.sort(key=lambda x: (-x["priority"], x["arxiv_id"]))
+    elif queued_sort == "depth":
+        queued_papers.sort(key=lambda x: (x["depth"], -x["priority"], x["arxiv_id"]))
+    elif queued_sort == "id":
         queued_papers.sort(key=lambda x: x["arxiv_id"])
-
-    # Build processed papers list with dataset info
-    processed_papers = []
-    if show_processed:
-        for arxiv_id in processed_ids:
-            paper_info = arxiv_id_index.get(arxiv_id, {})
-            processed_papers.append({
-                "arxiv_id": arxiv_id,
-                "title": paper_info.get("title"),
-                "in_dataset": arxiv_id in arxiv_id_index,
-            })
 
     return templates.TemplateResponse(
         "crawler_status.html",
@@ -389,14 +374,11 @@ async def crawler_status(
             "processed_count": len(processed_ids),
             "failed_count": len(failed_ids),
             "queued_count": len(queued_ids),
-            "in_dataset_count": in_dataset_count,
-            "pending_count": pending_count,
             "last_updated": last_updated_display,
+            "in_dataset_papers": in_dataset_papers,
             "queued_papers": queued_papers,
-            "processed_papers": processed_papers,
             "failed_ids": failed_ids,
-            "sort": sort,
-            "filter": filter,
-            "show_processed": show_processed,
+            "queued_sort": queued_sort,
+            "dataset_sort": dataset_sort,
         },
     )
