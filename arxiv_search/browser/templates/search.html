@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Search: {{ query }} - arXiv Browser{% endblock %}
+
+{% block content %}
+<form class="search-form" action="/search" method="get">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search papers by title or abstract..." autofocus>
+</form>
+
+{% if query %}
+<p class="stats">
+    {% if num_results > 100 %}
+        Showing 100 of {{ num_results }} results for "{{ query }}"
+    {% elif num_results > 0 %}
+        {{ num_results }} result{% if num_results != 1 %}s{% endif %} for "{{ query }}"
+    {% else %}
+        No results for "{{ query }}"
+    {% endif %}
+</p>
+{% endif %}
+
+{% for paper in papers %}
+<div class="paper-card">
+    <h2><a href="/paper/{{ paper.arxiv_id }}">{{ paper.title }}</a></h2>
+    <div class="meta">
+        <span class="citation-count">{{ paper.cited_by_count }} citations</span>
+        · <span>{{ paper.arxiv_id }}</span>
+        {% if paper.published %}
+            · <span>{{ paper.published[:10] if paper.published else '' }}</span>
+        {% endif %}
+        {% if paper.categories %}
+            {% for cat in paper.categories %}
+                <span class="tag">{{ cat }}</span>
+            {% endfor %}
+        {% endif %}
+    </div>
+    <p class="abstract">{{ paper.abstract[:500] }}{% if paper.abstract|length > 500 %}...{% endif %}</p>
+</div>
+{% endfor %}
+
+{% if query and num_results == 0 %}
+<div class="no-results">
+    <p>No papers found matching your search.</p>
+    <p>Try different keywords or browse the full dataset.</p>
+</div>
+{% endif %}
+{% endblock %}
+

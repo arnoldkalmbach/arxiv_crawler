@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}arXiv Browser{% endblock %}</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent: #58a6ff;
+            --accent-hover: #79c0ff;
+            --border: #30363d;
+            --success: #3fb950;
+            --warning: #d29922;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        header h1 a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        header h1 a:hover {
+            color: var(--accent);
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-top: 0.25rem;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            color: var(--accent-hover);
+            text-decoration: underline;
+        }
+
+        .search-form {
+            margin-bottom: 2rem;
+        }
+
+        .search-form input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-form input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        .search-form input[type="text"]::placeholder {
+            color: var(--text-muted);
+        }
+
+        .paper-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .paper-card:hover {
+            border-color: var(--accent);
+        }
+
+        .paper-card h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .paper-card .meta {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .paper-card .abstract {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .paper-detail {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .paper-detail h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .paper-detail .meta {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .paper-detail .abstract {
+            margin-bottom: 1.5rem;
+            white-space: pre-wrap;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 1.5rem 0 1rem;
+            color: var(--text-primary);
+        }
+
+        .citation-list {
+            list-style: none;
+        }
+
+        .citation-list li {
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .citation-list .context {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
+        .tag {
+            display: inline-block;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-right: 0.25rem;
+        }
+
+        .external-link {
+            color: var(--success);
+        }
+
+        .stats {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .no-results {
+            color: var(--text-muted);
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .collapsible-section {
+            margin-top: 1.5rem;
+        }
+
+        .collapsible-section summary {
+            cursor: pointer;
+            user-select: none;
+            list-style: none;
+        }
+
+        .collapsible-section summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .collapsible-section summary::before {
+            content: "▶";
+            display: inline-block;
+            margin-right: 0.5rem;
+            transition: transform 0.2s;
+            font-size: 0.8em;
+        }
+
+        .collapsible-section[open] summary::before {
+            transform: rotate(90deg);
+        }
+
+        .collapsible-section summary:hover {
+            color: var(--accent);
+        }
+
+        .citation-count {
+            color: var(--warning);
+            font-weight: 600;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+            margin: 2rem 0;
+            padding: 1rem;
+        }
+
+        .page-link {
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .page-link:hover:not(.disabled) {
+            border-color: var(--accent);
+            background: var(--bg-tertiary);
+            text-decoration: none;
+        }
+
+        .page-link.disabled {
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            color: var(--text-secondary);
+        }
+
+        .papers-list {
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><a href="/">arXiv Browser</a></h1>
+            <p class="subtitle">Browse and search crawled arXiv papers</p>
+        </header>
+        
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
+
