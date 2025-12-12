@@ -10,8 +10,8 @@ from datetime import datetime
 from pathlib import Path
 
 import polars as pl
-import torch
-from arxiv_crawler import parse_tei_xml
+from arxiv_search.inference import Inference
+from arxiv_search.model import load_model
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -20,20 +20,27 @@ from omegaconf import OmegaConf
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 
-from arxiv_search.inference import Inference
-from arxiv_search.model import load_model
+from arxiv_crawler import parse_tei_xml
 
 # Paths
 BROWSER_DIR = Path(__file__).parent
 DATA_DIR = BROWSER_DIR.parent / "data"
 # PAPERS_FILE = DATA_DIR / "papers.jsonl"
-CRAWLER_STATE_FILE = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "crawler_state.json"
-PAPERS_FILE = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "papers.jsonl"
+CRAWLER_STATE_FILE = (
+    BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "crawler_state.json"
+)
+PAPERS_FILE = (
+    BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "papers.jsonl"
+)
 XML_DOCS_DIR = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "xml_docs"
 # PAPERS_FILE = DATA_DIR / "papers.jsonl"
 
 # Semantic search / inference paths
-MODEL_RUN_DIR = BROWSER_DIR.parent / "runs" / "lr1e-03_bs256_layers1_hidden768_heads12_20251114_151931"
+MODEL_RUN_DIR = (
+    BROWSER_DIR.parent
+    / "runs"
+    / "lr1e-03_bs256_layers1_hidden768_heads12_20251114_151931"
+)
 MODEL_CHECKPOINT = MODEL_RUN_DIR / "checkpoints" / "model_3500.pth"
 MODEL_CONFIG_FILE = MODEL_RUN_DIR / "config.yaml"
 PAPER_EMBEDDINGS_FILE = DATA_DIR / "paper_embeddings.parquet"
@@ -97,7 +104,9 @@ async def startup_event():
     papers_df = load_papers()
     arxiv_id_index = build_arxiv_id_index(papers_df)
     cited_by_index = build_cited_by_index(papers_df)
-    print(f"Built index with {len(arxiv_id_index)} papers, {len(cited_by_index)} cited papers")
+    print(
+        f"Built index with {len(arxiv_id_index)} papers, {len(cited_by_index)} cited papers"
+    )
 
     # Initialize semantic search inference
     print(f"Loading semantic search models on {DEVICE}...")
@@ -123,7 +132,9 @@ async def startup_event():
         device=DEVICE,
     )
     inference.build_index(PAPER_EMBEDDINGS_FILE)
-    print(f"Semantic search ready with {len(inference.paper_embeddings)} paper embeddings")
+    print(
+        f"Semantic search ready with {len(inference.paper_embeddings)} paper embeddings"
+    )
 
 
 # Pydantic models for API
@@ -145,7 +156,9 @@ async def semantic_search(request: SemanticSearchRequest):
     # Get the paper to build general context
     paper = arxiv_id_index.get(request.arxiv_id)
     if not paper:
-        raise HTTPException(status_code=404, detail=f"Paper {request.arxiv_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Paper {request.arxiv_id} not found"
+        )
 
     # Build context in Specter format: "{title}[SEP]{abstract}"
     title = paper.get("title", "")
@@ -182,16 +195,18 @@ async def semantic_search(request: SemanticSearchRequest):
         # Determine if this is an existing citation or a proposed one
         citation_type = "existing" if match_arxiv_id in cited_arxiv_ids else "proposed"
 
-        results.append({
-            "arxiv_id": match_arxiv_id,
-            "title": match_paper.get("title", row.get("title", "Unknown")),
-            "abstract": match_paper.get("abstract", ""),
-            "distance": float(row.get("distance", 0.0)),
-            "citation_type": citation_type,
-        })
+        results.append(
+            {
+                "arxiv_id": match_arxiv_id,
+                "title": match_paper.get("title", row.get("title", "Unknown")),
+                "abstract": match_paper.get("abstract", ""),
+                "distance": float(row.get("distance", 0.0)),
+                "citation_type": citation_type,
+            }
+        )
 
     # Limit to top_k after filtering
-    results = results[:request.top_k]
+    results = results[: request.top_k]
 
     print(f"[semantic-search] Found {len(results)} matches")
     return JSONResponse(content={"matches": results})
@@ -256,13 +271,17 @@ async def search(request: Request, q: str = ""):
         | pl.col("abstract").str.to_lowercase().str.contains(query_lower, literal=True)
         | (
             pl.col("authors")
-            .list.eval(pl.element().str.to_lowercase().str.contains(query_lower, literal=True))
+            .list.eval(
+                pl.element().str.to_lowercase().str.contains(query_lower, literal=True)
+            )
             .list.any()
         )
     )
 
     # Convert to list of dicts for template and add citation counts
-    papers_list = results.select(["arxiv_id", "title", "abstract", "published", "categories"]).to_dicts()
+    papers_list = results.select(
+        ["arxiv_id", "title", "abstract", "published", "categories"]
+    ).to_dicts()
     for paper in papers_list:
         paper["cited_by_count"] = len(cited_by_index.get(paper["arxiv_id"], []))
 
@@ -435,18 +454,22 @@ async def crawler_status(
             # Count citations
             citations = paper_info.get("citations") or []
             internal_citations = sum(
-                1 for c in citations if c.get("arxiv_id") and c.get("arxiv_id") in arxiv_id_index
+                1
+                for c in citations
+                if c.get("arxiv_id") and c.get("arxiv_id") in arxiv_id_index
             )
             external_citations = len(citations) - internal_citations
             cited_by_count = len(cited_by_index.get(arxiv_id, []))
-            
-            in_dataset_papers.append({
-                "arxiv_id": arxiv_id,
-                "title": paper_info.get("title"),
-                "internal_citations": internal_citations,
-                "external_citations": external_citations,
-                "cited_by": cited_by_count,
-            })
+
+            in_dataset_papers.append(
+                {
+                    "arxiv_id": arxiv_id,
+                    "title": paper_info.get("title"),
+                    "internal_citations": internal_citations,
+                    "external_citations": external_citations,
+                    "cited_by": cited_by_count,
+                }
+            )
 
     # Sort in-dataset papers (default "crawled" keeps original order from processed_ids)
     if dataset_sort == "cited_by":
@@ -463,15 +486,25 @@ async def crawler_status(
     # Build queued papers list (pending only)
     queued_papers = []
     for arxiv_id, priority_data in queued_ids.items():
-        priority = priority_data[0] if isinstance(priority_data, list) and len(priority_data) > 0 else 0
-        depth = priority_data[1] if isinstance(priority_data, list) and len(priority_data) > 1 else 0
+        priority = (
+            priority_data[0]
+            if isinstance(priority_data, list) and len(priority_data) > 0
+            else 0
+        )
+        depth = (
+            priority_data[1]
+            if isinstance(priority_data, list) and len(priority_data) > 1
+            else 0
+        )
         paper_info = arxiv_id_index.get(arxiv_id, {})
-        queued_papers.append({
-            "arxiv_id": arxiv_id,
-            "priority": priority,
-            "depth": depth,
-            "title": paper_info.get("title"),
-        })
+        queued_papers.append(
+            {
+                "arxiv_id": arxiv_id,
+                "priority": priority,
+                "depth": depth,
+                "title": paper_info.get("title"),
+            }
+        )
 
     # Sort queued papers
     if queued_sort == "priority":
