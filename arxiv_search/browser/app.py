@@ -5,6 +5,8 @@ Run with:
     cd arxiv_search && uv run uvicorn browser.app:app --reload --port 8000
 """
 
+import json
+from datetime import datetime
 from pathlib import Path
 
 import polars as pl
@@ -16,6 +18,7 @@ from fastapi.templating import Jinja2Templates
 BROWSER_DIR = Path(__file__).parent
 DATA_DIR = BROWSER_DIR.parent / "data"
 PAPERS_FILE = DATA_DIR / "papers.jsonl"
+CRAWLER_STATE_FILE = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "crawler_state.json"
 
 # Initialize FastAPI app
 app = FastAPI(title="arXiv Browser")
@@ -226,5 +229,94 @@ async def paper_detail(request: Request, arxiv_id: str):
             "external_citations": external_citations,
             "citing_papers": citing_papers,
             "total_cited_by": total_cited_by,
+        },
+    )
+
+
+@app.get("/crawler-status", response_class=HTMLResponse)
+async def crawler_status(
+    request: Request,
+    sort: str = "priority",
+    show_processed: bool = False,
+    filter: str = "all",
+):
+    """Display the status of the crawler state file."""
+    if not CRAWLER_STATE_FILE.exists():
+        raise HTTPException(status_code=404, detail="Crawler state file not found")
+
+    with open(CRAWLER_STATE_FILE) as f:
+        state = json.load(f)
+
+    processed_ids = state.get("processed_ids", [])
+    failed_ids = state.get("failed_ids", [])
+    queued_ids = state.get("queued_ids", {})
+    last_updated = state.get("last_updated", "Unknown")
+
+    # Parse last_updated for display
+    try:
+        last_updated_dt = datetime.fromisoformat(last_updated)
+        last_updated_display = last_updated_dt.strftime("%Y-%m-%d %H:%M:%S")
+    except (ValueError, TypeError):
+        last_updated_display = str(last_updated)
+
+    # Build queued papers list with priority info
+    queued_papers = []
+    for arxiv_id, priority_data in queued_ids.items():
+        priority = priority_data[0] if isinstance(priority_data, list) and len(priority_data) > 0 else 0
+        depth = priority_data[1] if isinstance(priority_data, list) and len(priority_data) > 1 else 0
+        paper_info = arxiv_id_index.get(arxiv_id, {})
+        queued_papers.append({
+            "arxiv_id": arxiv_id,
+            "priority": priority,
+            "depth": depth,
+            "title": paper_info.get("title"),
+            "in_dataset": arxiv_id in arxiv_id_index,
+        })
+
+    # Apply filter
+    if filter == "in_dataset":
+        queued_papers = [p for p in queued_papers if p["in_dataset"]]
+    elif filter == "pending":
+        queued_papers = [p for p in queued_papers if not p["in_dataset"]]
+
+    # Count for filter badges (before filtering)
+    in_dataset_count = sum(1 for p in queued_ids if p in arxiv_id_index)
+    pending_count = len(queued_ids) - in_dataset_count
+
+    # Sort queued papers
+    if sort == "priority":
+        queued_papers.sort(key=lambda x: (-x["priority"], x["arxiv_id"]))
+    elif sort == "depth":
+        queued_papers.sort(key=lambda x: (x["depth"], -x["priority"], x["arxiv_id"]))
+    elif sort == "id":
+        queued_papers.sort(key=lambda x: x["arxiv_id"])
+
+    # Build processed papers list with dataset info
+    processed_papers = []
+    if show_processed:
+        for arxiv_id in processed_ids:
+            paper_info = arxiv_id_index.get(arxiv_id, {})
+            processed_papers.append({
+                "arxiv_id": arxiv_id,
+                "title": paper_info.get("title"),
+                "in_dataset": arxiv_id in arxiv_id_index,
+            })
+
+    return templates.TemplateResponse(
+        "crawler_status.html",
+        {
+            "request": request,
+            "processed_count": len(processed_ids),
+            "failed_count": len(failed_ids),
+            "queued_count": len(queued_ids),
+            "in_dataset_count": in_dataset_count,
+            "pending_count": pending_count,
+            "last_updated": last_updated_display,
+            "queued_papers": queued_papers,
+            "processed_papers": processed_papers,
+            "failed_ids": failed_ids,
+            "sort": sort,
+            "filter": filter,
+            "show_processed": show_processed,
         },
     )

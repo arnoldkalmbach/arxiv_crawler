@@ -46,6 +46,14 @@
             margin-bottom: 2rem;
         }
 
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
         header h1 {
             font-size: 1.75rem;
             font-weight: 600;
@@ -65,6 +73,25 @@
             color: var(--text-secondary);
             font-size: 0.95rem;
             margin-top: 0.25rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            padding: 0.5rem 0;
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent);
+            text-decoration: none;
+            border-bottom-color: var(--accent);
         }
 
         a {
@@ -286,8 +313,17 @@
 <body>
     <div class="container">
         <header>
-            <h1><a href="/">arXiv Browser</a></h1>
-            <p class="subtitle">Browse and search crawled arXiv papers</p>
+            <div class="header-content">
+                <div>
+                    <h1><a href="/">arXiv Browser</a></h1>
+                    <p class="subtitle">Browse and search crawled arXiv papers</p>
+                </div>
+                <nav class="nav-links">
+                    <a href="/">Papers</a>
+                    <a href="/search">Search</a>
+                    <a href="/crawler-status">Crawler Status</a>
+                </nav>
+            </div>
         </header>
         
         {% block content %}{% endblock %}

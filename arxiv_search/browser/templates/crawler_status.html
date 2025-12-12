@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Crawler Status - arXiv Browser{% endblock %}
+
+{% block content %}
+<div class="status-header">
+    <h2>Crawler Status</h2>
+    <p class="last-updated">Last updated: {{ last_updated }}</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card processed">
+        <div class="stat-number">{{ processed_count }}</div>
+        <div class="stat-label">Processed</div>
+    </div>
+    <div class="stat-card queued">
+        <div class="stat-number">{{ queued_count }}</div>
+        <div class="stat-label">Queued</div>
+    </div>
+    <div class="stat-card failed">
+        <div class="stat-number">{{ failed_count }}</div>
+        <div class="stat-label">Failed</div>
+    </div>
+</div>
+
+<div class="queue-section">
+    <div class="section-header">
+        <h3 class="section-title">Queued Papers</h3>
+        <div class="controls-row">
+            <div class="filter-controls">
+                Filter: 
+                <a href="?filter=all&sort={{ sort }}{% if show_processed %}&show_processed=true{% endif %}" class="filter-link {% if filter == 'all' %}active{% endif %}">All <span class="count">{{ queued_count }}</span></a>
+                <a href="?filter=in_dataset&sort={{ sort }}{% if show_processed %}&show_processed=true{% endif %}" class="filter-link {% if filter == 'in_dataset' %}active{% endif %}">In Dataset <span class="count">{{ in_dataset_count }}</span></a>
+                <a href="?filter=pending&sort={{ sort }}{% if show_processed %}&show_processed=true{% endif %}" class="filter-link {% if filter == 'pending' %}active{% endif %}">Pending <span class="count">{{ pending_count }}</span></a>
+            </div>
+            <div class="sort-controls">
+                Sort by: 
+                <a href="?sort=priority&filter={{ filter }}{% if show_processed %}&show_processed=true{% endif %}" class="sort-link {% if sort == 'priority' %}active{% endif %}">Priority</a>
+                <a href="?sort=depth&filter={{ filter }}{% if show_processed %}&show_processed=true{% endif %}" class="sort-link {% if sort == 'depth' %}active{% endif %}">Depth</a>
+                <a href="?sort=id&filter={{ filter }}{% if show_processed %}&show_processed=true{% endif %}" class="sort-link {% if sort == 'id' %}active{% endif %}">ID</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="queue-table-container">
+        <table class="queue-table">
+            <thead>
+                <tr>
+                    <th>arXiv ID</th>
+                    <th>Priority</th>
+                    <th>Depth</th>
+                    <th>Title</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for paper in queued_papers %}
+                <tr>
+                    <td>
+                        {% if paper.in_dataset %}
+                        <a href="/paper/{{ paper.arxiv_id }}">{{ paper.arxiv_id }}</a>
+                        {% else %}
+                        <a href="https://arxiv.org/abs/{{ paper.arxiv_id }}" class="external-link" target="_blank">{{ paper.arxiv_id }}</a>
+                        {% endif %}
+                    </td>
+                    <td class="priority-cell">{{ paper.priority }}</td>
+                    <td class="depth-cell">{{ paper.depth }}</td>
+                    <td class="title-cell">{{ paper.title or "—" }}</td>
+                    <td>
+                        {% if paper.in_dataset %}
+                        <span class="badge in-dataset">In Dataset</span>
+                        {% else %}
+                        <span class="badge pending">Pending</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if failed_ids %}
+<details class="collapsible-section">
+    <summary class="section-title">Failed Papers ({{ failed_count }})</summary>
+    <ul class="id-list">
+        {% for arxiv_id in failed_ids %}
+        <li>
+            <a href="https://arxiv.org/abs/{{ arxiv_id }}" class="external-link" target="_blank">{{ arxiv_id }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</details>
+{% endif %}
+
+<details class="collapsible-section" {% if show_processed %}open{% endif %}>
+    <summary class="section-title">Processed Papers ({{ processed_count }})</summary>
+    {% if not show_processed %}
+    <p class="load-hint"><a href="?sort={{ sort }}&filter={{ filter }}&show_processed=true">Load processed papers list</a></p>
+    {% else %}
+    <ul class="id-list">
+        {% for paper in processed_papers %}
+        <li>
+            {% if paper.in_dataset %}
+            <a href="/paper/{{ paper.arxiv_id }}">{{ paper.arxiv_id }}</a>
+            {% if paper.title %}<span class="paper-title-hint">{{ paper.title[:60] }}{% if paper.title|length > 60 %}...{% endif %}</span>{% endif %}
+            {% else %}
+            <a href="https://arxiv.org/abs/{{ paper.arxiv_id }}" class="external-link" target="_blank">{{ paper.arxiv_id }}</a>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</details>
+
+<style>
+    .status-header {
+        margin-bottom: 2rem;
+    }
+    
+    .status-header h2 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .last-updated {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .stat-card.processed {
+        border-left: 4px solid var(--success);
+    }
+    
+    .stat-card.queued {
+        border-left: 4px solid var(--warning);
+    }
+    
+    .stat-card.failed {
+        border-left: 4px solid #f85149;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+    }
+    
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .queue-section {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .section-header .section-title {
+        margin: 0;
+    }
+    
+    .controls-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        align-items: center;
+    }
+    
+    .filter-controls,
+    .sort-controls {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    
+    .filter-link,
+    .sort-link {
+        padding: 0.25rem 0.5rem;
+        margin-left: 0.25rem;
+        border-radius: 4px;
+        background: var(--bg-tertiary);
+    }
+    
+    .filter-link.active,
+    .sort-link.active {
+        background: var(--accent);
+        color: var(--bg-primary);
+    }
+    
+    .filter-link:hover,
+    .sort-link:hover {
+        text-decoration: none;
+    }
+    
+    .filter-link .count {
+        opacity: 0.7;
+        font-size: 0.8rem;
+    }
+    
+    .filter-link.active .count {
+        opacity: 1;
+    }
+    
+    .queue-table-container {
+        overflow-x: auto;
+    }
+    
+    .queue-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    
+    .queue-table th,
+    .queue-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .queue-table th {
+        color: var(--text-secondary);
+        font-weight: 600;
+        background: var(--bg-tertiary);
+    }
+    
+    .queue-table tbody tr:hover {
+        background: var(--bg-tertiary);
+    }
+    
+    .priority-cell,
+    .depth-cell {
+        font-family: 'SF Mono', 'Monaco', monospace;
+        text-align: center;
+        min-width: 60px;
+    }
+    
+    .title-cell {
+        max-width: 400px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--text-secondary);
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .badge.in-dataset {
+        background: rgba(63, 185, 80, 0.15);
+        color: var(--success);
+    }
+    
+    .badge.pending {
+        background: rgba(210, 153, 34, 0.15);
+        color: var(--warning);
+    }
+    
+    .id-list {
+        list-style: none;
+        padding: 0;
+        margin-top: 1rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 0.5rem;
+    }
+    
+    .id-list li {
+        padding: 0.5rem 0.75rem;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    
+    .paper-title-hint {
+        color: var(--text-muted);
+        margin-left: 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    .load-hint {
+        margin-top: 1rem;
+        color: var(--text-secondary);
+    }
+</style>
+{% endblock %}
+
