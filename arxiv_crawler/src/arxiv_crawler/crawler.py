@@ -239,11 +239,12 @@ class ArxivCrawler:
 
         with tqdm(total=self.max_papers, desc="Crawling papers") as pbar:
             pbar.update(papers_processed)
-            if papers_processed > self.max_papers // 2:
-                # Go deep on top citations for the second half of processing
-                self.priority = ("num_citations", "depth")
 
             while self.queued_ids and papers_processed < self.max_papers:
+                if papers_processed > self.max_papers // 2:
+                    # Go deep on top citations for the second half of processing
+                    self.priority = ("num_citations", "depth")
+
                 # Pop highest priority paper: max num citations, min depth
                 arxiv_id, depth = self._pop_next_paper()
                 # Process paper

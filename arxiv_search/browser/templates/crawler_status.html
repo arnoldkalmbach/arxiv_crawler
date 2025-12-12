@@ -29,7 +29,7 @@
         <div class="controls-row">
             <div class="filter-controls">
                 Filter: 
-                <a href="?filter=all&sort={{ sort }}{% if show_processed %}&show_processed=true{% endif %}" class="filter-link {% if filter == 'all' %}active{% endif %}">All <span class="count">{{ queued_count }}</span></a>
+                <a href="?filter=all&sort={{ sort }}{% if show_processed %}&show_processed=true{% endif %}" class="filter-link {% if filter == 'all' %}active{% endif %}">All <span class="count">{{ in_dataset_count + pending_count }}</span></a>
                 <a href="?filter=in_dataset&sort={{ sort }}{% if show_processed %}&show_processed=true{% endif %}" class="filter-link {% if filter == 'in_dataset' %}active{% endif %}">In Dataset <span class="count">{{ in_dataset_count }}</span></a>
                 <a href="?filter=pending&sort={{ sort }}{% if show_processed %}&show_processed=true{% endif %}" class="filter-link {% if filter == 'pending' %}active{% endif %}">Pending <span class="count">{{ pending_count }}</span></a>
             </div>
@@ -63,8 +63,8 @@
                         <a href="https://arxiv.org/abs/{{ paper.arxiv_id }}" class="external-link" target="_blank">{{ paper.arxiv_id }}</a>
                         {% endif %}
                     </td>
-                    <td class="priority-cell">{{ paper.priority }}</td>
-                    <td class="depth-cell">{{ paper.depth }}</td>
+                    <td class="priority-cell">{{ paper.priority if paper.priority is not none else "—" }}</td>
+                    <td class="depth-cell">{{ paper.depth if paper.depth is not none else "—" }}</td>
                     <td class="title-cell">{{ paper.title or "—" }}</td>
                     <td>
                         {% if paper.in_dataset %}
