@@ -39,6 +39,7 @@ dev = [
 
 [tool.uv.sources]
 arxiv-crawler = { workspace = true }
+rectified-flow = { git = "https://github.com/lqiang67/rectified-flow", rev = "v1.0.1" }
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -58,7 +59,3 @@ target-version = "py312"
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
-
-[tool.uv.sources]
-rectified-flow = { git = "https://github.com/lqiang67/rectified-flow", rev = "v1.0.1" }
-
