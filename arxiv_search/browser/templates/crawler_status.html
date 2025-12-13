@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Crawler Status - arXiv Browser{% endblock %}
+
+{% block content %}
+<div class="status-header">
+    <h2>Crawler Status</h2>
+    <p class="last-updated">Last updated: {{ last_updated }}</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card processed">
+        <div class="stat-number">{{ processed_count }}</div>
+        <div class="stat-label">In Dataset</div>
+    </div>
+    <div class="stat-card queued">
+        <div class="stat-number">{{ queued_count }}</div>
+        <div class="stat-label">Queued</div>
+    </div>
+    <div class="stat-card failed">
+        <div class="stat-number">{{ failed_count }}</div>
+        <div class="stat-label">Failed</div>
+    </div>
+</div>
+
+<div class="queue-section">
+    <div class="section-header">
+        <h3 class="section-title">In Dataset <span class="count">({{ in_dataset_papers|length }})</span></h3>
+        <div class="sort-controls">
+            Sort by: 
+            <a href="?dataset_sort=crawled&queued_sort={{ queued_sort }}" class="sort-link {% if dataset_sort == 'crawled' %}active{% endif %}">Crawled</a>
+            <a href="?dataset_sort=cited_by&queued_sort={{ queued_sort }}" class="sort-link {% if dataset_sort == 'cited_by' %}active{% endif %}">Cited By</a>
+            <a href="?dataset_sort=internal&queued_sort={{ queued_sort }}" class="sort-link {% if dataset_sort == 'internal' %}active{% endif %}">Internal</a>
+            <a href="?dataset_sort=external&queued_sort={{ queued_sort }}" class="sort-link {% if dataset_sort == 'external' %}active{% endif %}">External</a>
+            <a href="?dataset_sort=id&queued_sort={{ queued_sort }}" class="sort-link {% if dataset_sort == 'id' %}active{% endif %}">ID</a>
+        </div>
+    </div>
+    
+    <div class="queue-table-container">
+        <table class="queue-table">
+            <thead>
+                <tr>
+                    <th>arXiv ID</th>
+                    <th>Title</th>
+                    <th class="num-col">Cited By</th>
+                    <th class="num-col">Internal</th>
+                    <th class="num-col">External</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for paper in in_dataset_papers %}
+                <tr>
+                    <td>
+                        <a href="/paper/{{ paper.arxiv_id }}">{{ paper.arxiv_id }}</a>
+                    </td>
+                    <td class="title-cell">{{ paper.title or "—" }}</td>
+                    <td class="num-cell">{{ paper.cited_by }}</td>
+                    <td class="num-cell">{{ paper.internal_citations }}</td>
+                    <td class="num-cell">{{ paper.external_citations }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="queue-section">
+    <div class="section-header">
+        <h3 class="section-title">Queued Papers <span class="count">({{ queued_papers|length }})</span></h3>
+        <div class="sort-controls">
+            Sort by: 
+            <a href="?queued_sort=priority&dataset_sort={{ dataset_sort }}" class="sort-link {% if queued_sort == 'priority' %}active{% endif %}">Priority</a>
+            <a href="?queued_sort=depth&dataset_sort={{ dataset_sort }}" class="sort-link {% if queued_sort == 'depth' %}active{% endif %}">Depth</a>
+            <a href="?queued_sort=id&dataset_sort={{ dataset_sort }}" class="sort-link {% if queued_sort == 'id' %}active{% endif %}">ID</a>
+        </div>
+    </div>
+    
+    <div class="queue-table-container">
+        <table class="queue-table">
+            <thead>
+                <tr>
+                    <th>arXiv ID</th>
+                    <th class="num-col">Priority</th>
+                    <th class="num-col">Depth</th>
+                    <th>Title</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for paper in queued_papers %}
+                <tr>
+                    <td>
+                        <a href="https://arxiv.org/abs/{{ paper.arxiv_id }}" class="external-link" target="_blank">{{ paper.arxiv_id }}</a>
+                    </td>
+                    <td class="num-cell">{{ paper.priority }}</td>
+                    <td class="num-cell">{{ paper.depth }}</td>
+                    <td class="title-cell">{{ paper.title or "—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if failed_ids %}
+<details class="collapsible-section">
+    <summary class="section-title">Failed Papers ({{ failed_count }})</summary>
+    <ul class="id-list">
+        {% for arxiv_id in failed_ids %}
+        <li>
+            <a href="https://arxiv.org/abs/{{ arxiv_id }}" class="external-link" target="_blank">{{ arxiv_id }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</details>
+{% endif %}
+
+<style>
+    .status-header {
+        margin-bottom: 2rem;
+    }
+    
+    .status-header h2 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .last-updated {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    
+    .stat-card.processed {
+        border-left: 4px solid var(--success);
+    }
+    
+    .stat-card.queued {
+        border-left: 4px solid var(--warning);
+    }
+    
+    .stat-card.failed {
+        border-left: 4px solid #f85149;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+    }
+    
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .queue-section {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .section-header .section-title {
+        margin: 0;
+    }
+    
+    .section-title .count {
+        font-weight: 400;
+        color: var(--text-secondary);
+        font-size: 0.9em;
+    }
+    
+    .sort-controls {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    
+    .sort-link {
+        padding: 0.25rem 0.5rem;
+        margin-left: 0.25rem;
+        border-radius: 4px;
+        background: var(--bg-tertiary);
+    }
+    
+    .sort-link.active {
+        background: var(--accent);
+        color: var(--bg-primary);
+    }
+    
+    .sort-link:hover {
+        text-decoration: none;
+    }
+    
+    .queue-table-container {
+        overflow: auto;
+        max-height: 600px;
+    }
+    
+    .queue-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+    
+    .queue-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    
+    .queue-table th,
+    .queue-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .queue-table th {
+        color: var(--text-secondary);
+        font-weight: 600;
+        background: var(--bg-tertiary);
+    }
+    
+    .queue-table th.num-col {
+        text-align: center;
+    }
+    
+    .queue-table tbody tr:hover {
+        background: var(--bg-tertiary);
+    }
+    
+    .num-cell {
+        font-family: 'SF Mono', 'Monaco', monospace;
+        text-align: center;
+        min-width: 60px;
+    }
+    
+    .title-cell {
+        max-width: 400px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--text-secondary);
+    }
+    
+    .id-list {
+        list-style: none;
+        padding: 0;
+        margin-top: 1rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.5rem;
+    }
+    
+    .id-list li {
+        padding: 0.5rem 0.75rem;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    
+    .collapsible-section {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .collapsible-section summary {
+        cursor: pointer;
+        font-weight: 600;
+    }
+</style>
+
+<script>
+    // Auto-refresh the page every 30 seconds to keep crawler status updated
+    setTimeout(function() {
+        window.location.reload();
+    }, 30000);
+</script>
+{% endblock %}

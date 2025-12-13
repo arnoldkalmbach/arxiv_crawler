@@ -1,0 +1,811 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Full Text{% endblock %}
+
+{% block content %}
+<style>
+    /* Full-text reader layout - 3 columns: TOC, content, suggestions */
+    .reader-container {
+        display: grid;
+        grid-template-columns: 220px 1fr 320px;
+        gap: 1.5rem;
+        max-width: 100%;
+    }
+
+    @media (max-width: 1200px) {
+        .reader-container {
+            grid-template-columns: 200px 1fr;
+        }
+        .suggestions-sidebar {
+            display: none;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .reader-container {
+            grid-template-columns: 1fr;
+        }
+        .toc-sidebar {
+            display: none;
+        }
+    }
+
+    /* Table of Contents sidebar */
+    .toc-sidebar {
+        position: sticky;
+        top: 1rem;
+        height: fit-content;
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .toc-sidebar h3 {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .toc-list {
+        list-style: none;
+    }
+
+    .toc-list li {
+        margin-bottom: 0.5rem;
+    }
+
+    .toc-list a {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        display: block;
+        padding: 0.25rem 0;
+        transition: color 0.2s;
+    }
+
+    .toc-list a:hover {
+        color: var(--accent);
+        text-decoration: none;
+    }
+
+    .toc-list .section-num {
+        color: var(--text-muted);
+        margin-right: 0.5rem;
+    }
+
+    /* Main content area */
+    .paper-content {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 2rem 2.5rem;
+        min-width: 0;
+    }
+
+    /* Header */
+    .paper-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .paper-header h1 {
+        font-size: 1.75rem;
+        line-height: 1.3;
+        margin-bottom: 1rem;
+    }
+
+    .paper-meta {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .paper-meta .authors {
+        margin-bottom: 0.5rem;
+    }
+
+    .paper-links {
+        margin-top: 1rem;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .paper-links a {
+        padding: 0.4rem 0.8rem;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+
+    .paper-links a:hover {
+        background: var(--border);
+        text-decoration: none;
+    }
+
+    /* Article content styling */
+    .article-body h2, .article-body h3, .article-body h4, .article-body h5 {
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+    }
+
+    .article-body h2 {
+        font-size: 1.4rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .article-body h3 {
+        font-size: 1.2rem;
+    }
+
+    .article-body h4 {
+        font-size: 1.1rem;
+    }
+
+    .article-body .section-num {
+        color: var(--text-muted);
+        margin-right: 0.5rem;
+    }
+
+    .article-body p {
+        margin-bottom: 1rem;
+        line-height: 1.7;
+        text-align: justify;
+    }
+
+    /* Abstract */
+    .abstract-section {
+        background: var(--bg-tertiary);
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+
+    .abstract-section h2 {
+        font-size: 1.1rem;
+        margin-top: 0;
+        margin-bottom: 1rem;
+        border: none;
+        padding: 0;
+    }
+
+    .abstract-section p {
+        margin-bottom: 0;
+    }
+
+    /* Citations */
+    .citation {
+        color: var(--accent);
+        cursor: pointer;
+        position: relative;
+    }
+
+    .citation:hover {
+        color: var(--accent-hover);
+    }
+
+    /* Citation popup */
+    .citation-popup {
+        position: fixed;
+        z-index: 1000;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem;
+        max-width: 400px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        font-size: 0.9rem;
+        display: none;
+    }
+
+    .citation-popup.visible {
+        display: block;
+    }
+
+    .citation-popup .popup-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+
+    .citation-popup .popup-authors {
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+    }
+
+    .citation-popup .popup-year {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .citation-popup .popup-link {
+        margin-top: 0.75rem;
+        display: block;
+    }
+
+    /* Suggestions sidebar (right column) */
+    .suggestions-sidebar {
+        position: sticky;
+        top: 1rem;
+        height: fit-content;
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+    }
+
+    .suggestions-header {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-tertiary);
+        border-radius: 8px 8px 0 0;
+    }
+
+    .suggestions-header h3 {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        margin: 0 0 0.5rem 0;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .suggestions-query {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-style: italic;
+        line-height: 1.4;
+        max-height: 4.2em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .suggestions-empty {
+        padding: 2rem 1rem;
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+
+    .suggestions-loading {
+        padding: 2rem 1rem;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+
+    .suggestions-error {
+        padding: 1rem;
+        color: var(--error, #ff6b6b);
+        font-size: 0.85rem;
+    }
+
+    /* Figures */
+    .paper-figure, .table-figure {
+        margin: 1.5rem 0;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+        padding: 1rem;
+    }
+
+    .figure-placeholder {
+        background: var(--bg-primary);
+        color: var(--text-muted);
+        padding: 3rem;
+        text-align: center;
+        border-radius: 4px;
+        border: 1px dashed var(--border);
+    }
+
+    figcaption {
+        margin-top: 0.75rem;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .figure-desc {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+        font-style: italic;
+    }
+
+    /* Tables */
+    .paper-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .paper-table td, .paper-table th {
+        border: 1px solid var(--border);
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+    }
+
+    .paper-table tr:nth-child(even) {
+        background: var(--bg-primary);
+    }
+
+    /* Math */
+    .math-inline {
+        font-family: 'Times New Roman', serif;
+    }
+
+    .math-block {
+        overflow-x: auto;
+        padding: 1rem;
+        margin: 1rem 0;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+    }
+
+    /* Figure/table references */
+    .figure-ref {
+        color: var(--success);
+    }
+
+    /* References section */
+    .references-section {
+        margin-top: 3rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .references-section h2 {
+        margin-top: 0;
+    }
+
+    .references-list {
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+
+    .references-list li {
+        margin-bottom: 0.75rem;
+        padding-left: 0.5rem;
+    }
+
+    .ref-authors {
+        color: var(--text-secondary);
+    }
+
+    .ref-title {
+        color: var(--text-primary);
+    }
+
+    /* Acknowledgements */
+    .acknowledgements-section {
+        margin-top: 2rem;
+        padding: 1rem;
+        background: var(--bg-tertiary);
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+
+    .acknowledgements-section h3 {
+        margin-top: 0;
+        font-size: 1rem;
+        color: var(--text-secondary);
+    }
+
+    /* Suggestion result items */
+    .suggestions-list {
+        padding: 0;
+    }
+
+    .suggestion-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border);
+        transition: background 0.2s;
+    }
+
+    .suggestion-item:last-child {
+        border-bottom: none;
+    }
+
+    .suggestion-item:hover {
+        background: var(--bg-tertiary);
+    }
+
+    .suggestion-item a {
+        font-weight: 500;
+        font-size: 0.85rem;
+        display: block;
+        margin-bottom: 0.35rem;
+        line-height: 1.3;
+    }
+
+    .suggestion-item .result-meta {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .suggestion-item .distance {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .citation-badge {
+        font-size: 0.65rem;
+        padding: 0.1rem 0.4rem;
+        border-radius: 3px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .citation-badge.existing {
+        background: var(--success, #4caf50);
+        color: #fff;
+    }
+
+    .citation-badge.proposed {
+        background: var(--accent);
+        color: #fff;
+    }
+
+    /* Abstract preview tooltip - uses fixed positioning to escape overflow clipping */
+    .abstract-preview {
+        display: none;
+        position: fixed;
+        width: 400px;
+        padding: 1rem;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        z-index: 1000;
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: var(--text-secondary);
+        max-height: 350px;
+        overflow-y: auto;
+    }
+
+    .abstract-preview.visible {
+        display: block;
+    }
+
+    .abstract-preview .preview-title {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        line-height: 1.3;
+    }
+
+    .abstract-preview .preview-abstract {
+        margin: 0;
+    }
+
+    .abstract-preview .no-abstract {
+        font-style: italic;
+        color: var(--text-muted);
+    }
+</style>
+
+<div class="reader-container">
+    <!-- Table of Contents sidebar -->
+    <aside class="toc-sidebar">
+        <h3>Contents</h3>
+        <ul class="toc-list">
+            <li><a href="#abstract"><span class="section-num"></span>Abstract</a></li>
+            {% for section in toc %}
+            <li>
+                <a href="#{{ section.id }}">
+                    <span class="section-num">{{ section.num }}</span>{{ section.title }}
+                </a>
+            </li>
+            {% endfor %}
+            <li><a href="#references"><span class="section-num"></span>References</a></li>
+        </ul>
+    </aside>
+
+    <!-- Main content -->
+    <article class="paper-content">
+        <!-- Header -->
+        <header class="paper-header">
+            <h1>{{ title }}</h1>
+            <div class="paper-meta">
+                {% if authors %}
+                <div class="authors">{{ authors | join(", ") }}</div>
+                {% endif %}
+                {% if date %}
+                <div class="date">Published: {{ date }}</div>
+                {% endif %}
+            </div>
+            <div class="paper-links">
+                <a href="/paper/{{ arxiv_id }}">← Paper Details</a>
+                <a href="https://arxiv.org/abs/{{ arxiv_id }}" target="_blank">arXiv</a>
+                <a href="https://arxiv.org/pdf/{{ arxiv_id }}" target="_blank">PDF</a>
+            </div>
+        </header>
+
+        <!-- Abstract -->
+        <section class="abstract-section" id="abstract">
+            <h2>Abstract</h2>
+            {{ abstract_html }}
+        </section>
+
+        <!-- Main body -->
+        <div class="article-body">
+            {{ body_html }}
+        </div>
+
+        <!-- Acknowledgements -->
+        {% if ack_html %}
+        <section class="acknowledgements-section">
+            <h3>Acknowledgements</h3>
+            {{ ack_html }}
+        </section>
+        {% endif %}
+
+        <!-- References -->
+        <section class="references-section" id="references">
+            <h2>References</h2>
+            {{ references_html }}
+        </section>
+    </article>
+
+    <!-- Citation suggestions sidebar -->
+    <aside class="suggestions-sidebar" id="suggestions-sidebar">
+        <div class="suggestions-header">
+            <h3>Suggest Citations</h3>
+            <div class="suggestions-query" id="suggestions-query">
+                Select text to find relevant papers
+            </div>
+        </div>
+        <div id="suggestions-list" class="suggestions-list">
+            <div class="suggestions-empty">
+                Highlight text in the article to see citation suggestions.
+            </div>
+        </div>
+    </aside>
+</div>
+
+<!-- Abstract preview tooltip (positioned by JS) -->
+<div id="abstract-preview" class="abstract-preview">
+    <div class="preview-title" id="preview-title"></div>
+    <div id="preview-content"></div>
+</div>
+
+<!-- Citation popup element -->
+<div id="citation-popup" class="citation-popup">
+    <div class="popup-title"></div>
+    <div class="popup-authors"></div>
+    <div class="popup-year"></div>
+    <a class="popup-link" href="#" style="display:none;">View paper →</a>
+</div>
+
+
+<!-- MathJax for formula rendering -->
+<script>
+    window.MathJax = {
+        tex: {
+            inlineMath: [['\\(', '\\)']],
+            displayMath: [['\\[', '\\]']]
+        },
+        options: {
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+    };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+<script>
+    // Citation popup handling
+    const citationPopup = document.getElementById('citation-popup');
+    const citations = document.querySelectorAll('.citation');
+
+    citations.forEach(citation => {
+        citation.addEventListener('mouseenter', (e) => {
+            const popupData = citation.dataset.popup;
+            if (!popupData) return;
+
+            // Parse the popup content
+            const parts = popupData.split(' — ');
+            const title = parts[0];
+            let authors = '';
+            let year = '';
+
+            if (parts.length > 1) {
+                const rest = parts[1];
+                const yearMatch = rest.match(/\((\d{4})\)$/);
+                if (yearMatch) {
+                    year = yearMatch[1];
+                    authors = rest.replace(yearMatch[0], '').trim();
+                } else {
+                    authors = rest;
+                }
+            }
+
+            citationPopup.querySelector('.popup-title').textContent = title;
+            citationPopup.querySelector('.popup-authors').textContent = authors;
+            citationPopup.querySelector('.popup-year').textContent = year ? `(${year})` : '';
+
+            // Handle link
+            const link = citationPopup.querySelector('.popup-link');
+            if (citation.tagName === 'A') {
+                link.href = citation.href;
+                link.style.display = 'block';
+            } else {
+                link.style.display = 'none';
+            }
+
+            // Position the popup
+            const rect = citation.getBoundingClientRect();
+            citationPopup.style.left = `${Math.min(rect.left, window.innerWidth - 420)}px`;
+            citationPopup.style.top = `${rect.bottom + 8}px`;
+            citationPopup.classList.add('visible');
+        });
+
+        citation.addEventListener('mouseleave', () => {
+            citationPopup.classList.remove('visible');
+        });
+    });
+
+    // Keep popup visible when hovering over it
+    citationPopup.addEventListener('mouseenter', () => {
+        citationPopup.classList.add('visible');
+    });
+
+    citationPopup.addEventListener('mouseleave', () => {
+        citationPopup.classList.remove('visible');
+    });
+
+    // Helper to escape HTML in user content
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Abstract preview tooltip handling
+    const abstractPreview = document.getElementById('abstract-preview');
+    const previewTitle = document.getElementById('preview-title');
+    const previewContent = document.getElementById('preview-content');
+    let hideTimeout = null;
+
+    function showPreview(item) {
+        clearTimeout(hideTimeout);
+        
+        const title = item.dataset.title || '';
+        const abstract = item.dataset.abstract || '';
+        
+        previewTitle.textContent = title;
+        previewContent.innerHTML = abstract 
+            ? `<p class="preview-abstract">${abstract}</p>`
+            : '<p class="no-abstract">No abstract available</p>';
+        
+        // Position to the left of the sidebar
+        const rect = item.getBoundingClientRect();
+        const previewWidth = 400;
+        const left = rect.left - previewWidth - 10;
+        const top = Math.max(10, Math.min(rect.top, window.innerHeight - 360));
+        
+        abstractPreview.style.left = `${left}px`;
+        abstractPreview.style.top = `${top}px`;
+        abstractPreview.classList.add('visible');
+    }
+
+    function hidePreview() {
+        hideTimeout = setTimeout(() => {
+            abstractPreview.classList.remove('visible');
+        }, 150); // Small delay to allow moving to tooltip
+    }
+
+    // Keep tooltip visible when hovering over it
+    abstractPreview.addEventListener('mouseenter', () => {
+        clearTimeout(hideTimeout);
+    });
+
+    abstractPreview.addEventListener('mouseleave', () => {
+        abstractPreview.classList.remove('visible');
+    });
+
+    function attachPreviewListeners() {
+        document.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('mouseenter', () => showPreview(item));
+            item.addEventListener('mouseleave', hidePreview);
+        });
+    }
+
+    // Citation suggestions - automatic on text selection
+    const articleBody = document.querySelector('.article-body');
+    const suggestionsQuery = document.getElementById('suggestions-query');
+    const suggestionsList = document.getElementById('suggestions-list');
+    const arxivId = '{{ arxiv_id }}';
+
+    let searchTimeout = null;
+    let lastSearchText = '';
+
+    async function searchCitations(text) {
+        if (!text || text === lastSearchText) return;
+        lastSearchText = text;
+
+        // Update query display
+        suggestionsQuery.textContent = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        suggestionsList.innerHTML = '<div class="suggestions-loading">Searching...</div>';
+
+        try {
+            const response = await fetch('/api/semantic-search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    arxiv_id: arxivId,
+                    selected_text: text,
+                    top_k: 10
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.matches && data.matches.length > 0) {
+                suggestionsList.innerHTML = data.matches.map((match) => {
+                    const badgeClass = match.citation_type === 'existing' ? 'existing' : 'proposed';
+                    const badgeText = match.citation_type === 'existing' ? 'Cited' : 'Proposed';
+                    const title = match.title || match.arxiv_id;
+                    return `
+                    <div class="suggestion-item" 
+                         data-title="${escapeHtml(title)}" 
+                         data-abstract="${escapeHtml(match.abstract || '')}">
+                        <a href="/paper/${match.arxiv_id}" target="_blank">${escapeHtml(title)}</a>
+                        <div class="result-meta">
+                            <span class="citation-badge ${badgeClass}">${badgeText}</span>
+                            <span class="distance">Score: ${match.distance.toFixed(3)}</span>
+                        </div>
+                    </div>
+                `}).join('');
+                
+                // Attach hover listeners for abstract preview
+                attachPreviewListeners();
+            } else {
+                suggestionsList.innerHTML = '<div class="suggestions-empty">No similar papers found.</div>';
+            }
+        } catch (error) {
+            console.error('Citation search error:', error);
+            suggestionsList.innerHTML = `<div class="suggestions-error">Error: ${error.message}</div>`;
+        }
+    }
+
+    // Debounced search on text selection
+    document.addEventListener('mouseup', (e) => {
+        const selection = window.getSelection();
+        const selectedText = selection.toString().trim();
+
+        // Only search if selection is in article body and has meaningful length
+        if (selectedText.length >= 10 && articleBody.contains(selection.anchorNode)) {
+            // Debounce to avoid rapid-fire requests
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchCitations(selectedText);
+            }, 300);
+        }
+    });
+
+    // Smooth scrolling for TOC links
+    document.querySelectorAll('.toc-list a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('href').slice(1);
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+</script>
+{% endblock %}
+

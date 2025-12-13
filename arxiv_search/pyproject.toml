@@ -22,6 +22,10 @@ dependencies = [
   "torch[onnnxscript]>=2.7.0",
   "torchvision>=0.22.0",
   "tqdm>=4.67.1",
+  "fastapi>=0.115.0",
+  "uvicorn>=0.34.0",
+  "jinja2>=3.1.0",
+  "arxiv-crawler",  # resolved from workspace
 ]
 
 [dependency-groups]
@@ -32,6 +36,10 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff>=0.14.1",
 ]
+
+[tool.uv.sources]
+arxiv-crawler = { workspace = true }
+rectified-flow = { git = "https://github.com/lqiang67/rectified-flow", rev = "v1.0.1" }
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -51,7 +59,3 @@ target-version = "py312"
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
-
-[tool.uv.sources]
-rectified-flow = { git = "https://github.com/lqiang67/rectified-flow", rev = "v1.0.1" }
-

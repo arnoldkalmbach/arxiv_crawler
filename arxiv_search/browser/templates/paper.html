@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}{{ paper.title }} - arXiv Browser{% endblock %}
+
+{% block content %}
+<div class="paper-detail">
+    <h1>{{ paper.title }}</h1>
+    
+    <div class="meta">
+        <div>
+            <strong>arXiv ID:</strong> {{ paper.arxiv_id }}
+            {% if paper.published %}
+                · <strong>Published:</strong> {{ paper.published[:10] if paper.published else '' }}
+            {% endif %}
+        </div>
+        {% if paper.authors %}
+        <div style="margin-top: 0.5rem;">
+            <strong>Authors:</strong> {{ paper.authors | join(", ") }}
+        </div>
+        {% endif %}
+        {% if paper.categories %}
+        <div style="margin-top: 0.5rem;">
+            {% for cat in paper.categories %}
+                <span class="tag">{{ cat }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <div style="margin-top: 0.75rem;">
+            <a href="/paper/{{ paper.arxiv_id }}/fulltext" class="external-link">📖 Read Full Text</a>
+            · <a href="{{ paper.arxiv_url }}" target="_blank" class="external-link">📄 View on arXiv →</a>
+            {% if paper.pdf_url %}
+                · <a href="{{ paper.pdf_url }}" target="_blank" class="external-link">📥 PDF</a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <h3 class="section-title">Abstract</h3>
+    <p class="abstract">{{ paper.abstract }}</p>
+    
+    <details class="collapsible-section" open>
+        <summary class="section-title">Cited By ({{ citing_papers|length }})</summary>
+        {% if citing_papers %}
+        <ul class="citation-list">
+            {% for citer in citing_papers %}
+            <li>
+                <a href="/paper/{{ citer.arxiv_id }}">{{ citer.title }}</a>
+                <span style="color: var(--text-muted);">[{{ citer.arxiv_id }}]</span>
+                {% if citer.reference_contexts %}
+                    {% for ctx in citer.reference_contexts[:2] %}
+                        {% if ctx %}
+                        <p class="context">"{{ ctx[:300] }}{% if ctx|length > 300 %}...{% endif %}"</p>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p style="color: var(--text-muted); font-style: italic;">No papers in this dataset cite this paper.</p>
+        {% endif %}
+    </details>
+    
+    {% if internal_citations %}
+    <details class="collapsible-section" open>
+        <summary class="section-title">References (internal) ({{ internal_citations|length }})</summary>
+        <ul class="citation-list">
+            {% for cit in internal_citations %}
+            <li>
+                <a href="/paper/{{ cit.arxiv_id }}">{{ cit.title }}</a>
+                <span style="color: var(--text-muted);">[{{ cit.arxiv_id }}]</span>
+                <div style="margin-top: 0.25rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    {% if cit.authors %}
+                        {{ cit.authors[:3] | join(", ") }}{% if cit.authors|length > 3 %} et al.{% endif %}
+                    {% endif %}
+                    {% if cit.published %}
+                        · {{ cit.published[:10] }}
+                    {% endif %}
+                    {% if cit.categories %}
+                        {% for cat in cit.categories[:2] %}
+                            <span class="tag" style="font-size: 0.75rem;">{{ cat }}</span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                {% if cit.reference_contexts %}
+                    {% for ctx in cit.reference_contexts[:2] %}
+                        {% if ctx %}
+                        <p class="context">"{{ ctx[:300] }}{% if ctx|length > 300 %}...{% endif %}"</p>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </details>
+    {% endif %}
+    
+    {% if external_citations %}
+    <details class="collapsible-section">
+        <summary class="section-title">References (external) ({{ external_citations|length }})</summary>
+        <ul class="citation-list">
+            {% for cit in external_citations[:20] %}
+            <li>
+                <span>{{ cit.title }}</span>
+                {% if cit.authors %}
+                    <span style="color: var(--text-muted);">— {{ cit.authors[:3] | join(", ") }}{% if cit.authors|length > 3 %} et al.{% endif %}</span>
+                {% endif %}
+                {% if cit.year %}
+                    <span style="color: var(--text-muted);">({{ cit.year }})</span>
+                {% endif %}
+                {% if cit.arxiv_id %}
+                    <span style="color: var(--text-muted);">[{{ cit.arxiv_id }}]</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+            {% if external_citations|length > 20 %}
+            <li style="color: var(--text-muted); font-style: italic;">
+                ... and {{ external_citations|length - 20 }} more
+            </li>
+            {% endif %}
+        </ul>
+    </details>
+    {% endif %}
+</div>
+{% endblock %}
+

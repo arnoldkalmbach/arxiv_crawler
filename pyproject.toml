@@ -1,0 +1,6 @@
+[tool.uv.workspace]
+members = [
+  "arxiv_crawler",
+  "arxiv_search",
+]
+
