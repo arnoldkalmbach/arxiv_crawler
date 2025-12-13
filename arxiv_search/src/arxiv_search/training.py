@@ -1,5 +1,6 @@
 """Training and evaluation functions for citation embedding model."""
 
+import random
 from pathlib import Path
 from typing import Optional
 
@@ -230,7 +231,6 @@ def evaluate(
     if all_examples and num_examples > 0:
         # Sample without replacement if we have enough examples
         num_to_sample = min(num_examples, len(all_examples))
-        import random
 
         sampled_indices = random.sample(range(len(all_examples)), num_to_sample)
         sampled_examples = [all_examples[i] for i in sampled_indices]

@@ -35,25 +35,28 @@ training:
   tensorboard_dir: runs
 
 evaluation:
-  batch_size: 256
+  batch_size: 16
   num_workers: 0
-  max_batches: 10  # null = evaluate all batches
+  max_batches: 100  # null = evaluate all batches
 
 rectflow:
   # Velocity field architecture
   velocity_field_type: "DiT"  # "DiT" or "CrossAttention"
-  num_blocks: 1  # Number of transformer blocks in velocity field
+  num_blocks: 4  # Number of transformer blocks in velocity field
   num_heads: 4  # Number of attention heads
-  mlp_ratio: 4.0  # MLP expansion ratio
+  mlp_ratio: 6.0  # MLP expansion ratio
   
   # Conditioning model
   conditioning_checkpoint: null  # Path to conditioning model checkpoint (null = auto-find latest in runs/)
 
 rectflow_training:
   batch_size: 128
-  num_workers: 6
+  num_workers: 8
   num_epochs: 100
   learning_rate: 2e-4
+  warmup_steps: 1000
+  min_lr_ratio: 0.1  # Final LR fraction after cosine decay
+  max_grad_norm: 1.0
   
   # Time weighting
   train_time_weight: "uniform"  # "uniform"

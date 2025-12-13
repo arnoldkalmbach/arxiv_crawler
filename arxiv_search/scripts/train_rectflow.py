@@ -1,6 +1,7 @@
 """Training script for citation embedding model."""
 
 import argparse
+import math
 from pathlib import Path
 
 import torch
@@ -8,6 +9,7 @@ import torch.distributions as dist
 import torch.optim as optim
 from omegaconf import OmegaConf
 from rectified_flow import RectifiedFlow
+from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 
 from arxiv_search.config import find_latest_checkpoint, load_config, setup_run_directory
@@ -46,6 +48,42 @@ def parse_args():
     return args, unknown
 
 
+def _estimate_total_steps(dataloader: DataLoader, num_epochs: int, fallback_per_epoch: int = 1000) -> int:
+    """
+    Estimate total training steps for scheduler.
+
+    If the dataloader has no length (e.g., IterableDataset), fall back to a sensible
+    per-epoch step count to keep scheduler progression stable.
+    """
+    try:
+        steps_per_epoch = len(dataloader)
+    except TypeError:
+        steps_per_epoch = None
+
+    if steps_per_epoch is None or steps_per_epoch <= 0:
+        steps_per_epoch = fallback_per_epoch
+
+    return max(1, num_epochs * steps_per_epoch)
+
+
+def _build_warmup_cosine_lambda(warmup_steps: int, total_steps: int, min_lr_ratio: float):
+    """
+    Create LR lambda implementing linear warmup followed by cosine decay.
+    """
+    warmup_steps = max(1, warmup_steps)
+    total_steps = max(warmup_steps + 1, total_steps)
+
+    def lr_lambda(step: int):
+        if step < warmup_steps:
+            return float(step + 1) / float(warmup_steps)
+
+        progress = min(1.0, max(0.0, (step - warmup_steps) / float(total_steps - warmup_steps)))
+        cosine_decay = 0.5 * (1 + math.cos(math.pi * progress))
+        return float(min_lr_ratio + (1 - min_lr_ratio) * cosine_decay)
+
+    return lr_lambda
+
+
 def main():
     """Main training function."""
     # Parse required arguments and collect config overrides
@@ -81,6 +119,8 @@ def main():
     # Ensure dataset exists (download if necessary)
     data_dir = ensure_dataset_exists(data_dir, cfg.data.hf_dataset_name)
 
+    # Do not request metadata during training to reduce CPU/IO overhead.
+    # Deterministic pairing falls back to hashing the target tensor when no key is provided.
     train_ds = IterableCouplingDataset(
         D1=CitationEmbeddingDataset(
             citations_file=data_dir / "train/citations.jsonl",
@@ -172,6 +212,15 @@ def main():
     optimizer = optim.AdamW(
         (param for param in velocity_model.parameters() if param.requires_grad), lr=cfg.rectflow_training.learning_rate
     )
+    total_steps = _estimate_total_steps(train_loader, cfg.rectflow_training.num_epochs)
+    lr_scheduler = LambdaLR(
+        optimizer,
+        lr_lambda=_build_warmup_cosine_lambda(
+            warmup_steps=cfg.rectflow_training.warmup_steps,
+            total_steps=total_steps,
+            min_lr_ratio=cfg.rectflow_training.min_lr_ratio,
+        ),
+    )
 
     # Train model
     print(f"\nStarting training for {cfg.rectflow_training.num_epochs} epochs...")
@@ -187,6 +236,8 @@ def main():
         save_steps=cfg.rectflow_training.save_steps,
         save_dir=models_dir,
         tensorboard_dir=tensorboard_dir,
+        lr_scheduler=lr_scheduler,
+        max_grad_norm=cfg.rectflow_training.max_grad_norm,
     )
 
     print("\n" + "=" * 60)

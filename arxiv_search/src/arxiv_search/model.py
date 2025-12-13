@@ -141,7 +141,10 @@ def load_rectflow_model(
     rectified_flow = RectifiedFlow(
         data_shape=(conditioning_model.config.hidden_size,),
         velocity_field=velocity_model,
+        train_time_weight="uniform",  # FIXME
+        train_time_distribution="lognormal",
         device=device,
+        is_independent_coupling=False
     )
 
     return rectified_flow
@@ -271,7 +274,6 @@ class VelocityField1dCrossAttention(nn.Module):
         self.position_ids = conditioning_model.embeddings.position_ids
         self.blocks = nn.ModuleList([CrossAttentionBlock(hidden_size, num_heads, mlp_ratio) for _ in range(num_blocks)])
         self.fc_out = nn.Linear(hidden_size, hidden_size)
-        self.act_out = conditioning_model.pooler.activation
 
     def forward(
         self,
@@ -294,7 +296,7 @@ class VelocityField1dCrossAttention(nn.Module):
         for block in self.blocks:
             x = block(x, c)
 
-        return self.act_out(self.fc_out(x[:, 0]))
+        return self.fc_out(x[:, 0])
 
 
 class VelocityField1dDiT(nn.Module):
@@ -331,4 +333,4 @@ class VelocityField1dDiT(nn.Module):
         for block in self.blocks:
             x = block(x, c)
 
-        return self.act_out(self.fc_out(x[:, 0]))
+        return self.fc_out(x[:, 0])

@@ -7,7 +7,7 @@ sample to always get the same noise vector without storing noise data.
 
 import hashlib
 from functools import partial
-from typing import Callable, Hashable
+from typing import Callable, Hashable, Optional
 
 import torch
 import torch.distributions as dist
@@ -36,6 +36,7 @@ class IterableCouplingDataset(IterableDataset):
         extract_target: Callable | None = None,
         extract_key: Callable | None = None,
         extract_conditioning: Callable | None = None,
+        extract_metadata: Callable | None = None,
     ):
         """
         Args:
@@ -61,6 +62,7 @@ class IterableCouplingDataset(IterableDataset):
         self.extract_target = extract_target
         self.extract_key = extract_key
         self.extract_conditioning = extract_conditioning
+        self.extract_metadata = extract_metadata
 
         if self.reflow:
             if self.D0 is None:
@@ -92,6 +94,19 @@ class IterableCouplingDataset(IterableDataset):
         else:
             # Fallback: hash string representation
             return hash(str(sample))
+
+    def _get_metadata(self, sample) -> Optional[dict]:
+        """Extract metadata from sample if available."""
+        if self.extract_metadata is not None:
+            return self.extract_metadata(sample)
+
+        # Auto-detect metadata when the sample is a tuple/list with a trailing dict
+        if isinstance(sample, (tuple, list)) and len(sample) >= 3:
+            maybe_meta = sample[-1]
+            if isinstance(maybe_meta, dict):
+                return maybe_meta
+
+        return None
 
     def _seed_from_key(self, key: Hashable) -> int:
         """Convert key to integer seed."""
@@ -147,8 +162,14 @@ class IterableCouplingDataset(IterableDataset):
                 if self.extract_conditioning is not None:
                     conditioning = self.extract_conditioning(d1_sample)
 
-                if conditioning is not None:
+                metadata = self._get_metadata(d1_sample)
+
+                if conditioning is not None and metadata is not None:
+                    yield X0, X1, conditioning, metadata
+                elif conditioning is not None:
                     yield X0, X1, conditioning
+                elif metadata is not None:
+                    yield X0, X1, metadata
                 else:
                     yield X0, X1
         else:
@@ -172,8 +193,15 @@ class IterableCouplingDataset(IterableDataset):
                 conditioning = None
                 if self.extract_conditioning is not None:
                     conditioning = self.extract_conditioning(d1_sample)
-                if conditioning is not None:
+
+                metadata = self._get_metadata(d1_sample)
+
+                if conditioning is not None and metadata is not None:
+                    yield X0, X1, conditioning, metadata
+                elif conditioning is not None:
                     yield X0, X1, conditioning
+                elif metadata is not None:
+                    yield X0, X1, metadata
                 else:
                     yield X0, X1
 
@@ -231,15 +259,23 @@ def collate_coupling_with_embeddings(
             - inputs: FloatTensor [B, L, K] - batched inputs_embeds (only if conditioning present)
             - attention_mask: Bool/Int Tensor [B, L] - only if inputs_embeds present
             - lengths: LongTensor [B] - only if inputs_embeds present
+            - metadata: list of dicts - only if metadata present
     """
-    # Determine batch structure
-    batch_len = len(batch[0])
+    # Extract metadata if present as the last element
+    has_metadata = isinstance(batch[0][-1], dict)
+    metadata_list = [elem[-1] for elem in batch] if has_metadata else None
+
+    # Remove metadata for core processing
+    core_batch = [elem[:-1] if has_metadata else elem for elem in batch]
+
+    # Determine batch structure on the core elements
+    batch_len = len(core_batch[0])
     has_conditioning = batch_len == 3
 
     if has_conditioning:
-        X0_list, X1_list, inputs_embeds_list = zip(*batch)
+        X0_list, X1_list, inputs_embeds_list = zip(*core_batch)
     else:
-        X0_list, X1_list = zip(*batch)
+        X0_list, X1_list = zip(*core_batch)
         inputs_embeds_list = None
 
     # Convert to tensors
@@ -291,6 +327,10 @@ def collate_coupling_with_embeddings(
         result["inputs"] = inputs
         result["attention_mask"] = attention_mask
         result["lengths"] = lengths
+
+    # Attach metadata if provided
+    if metadata_list is not None:
+        result["metadata"] = metadata_list
 
     return result
 
