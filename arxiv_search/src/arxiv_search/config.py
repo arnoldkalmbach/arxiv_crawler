@@ -14,11 +14,13 @@ class DataConfig:
 
     data_dir: str = "data"
     hf_dataset_name: Optional[str] = None
-    citations_batch_size: int = 10000
+    citations_batch_size: int = (
+        10000  # Size of citation embedding shard files (must match between build script and dataloader)
+    )
     basemodel_name: str = "sentence-transformers/allenai-specter"  # SentenceTransformer base model for embeddings
 
     # Dataset building settings
-    embedding_batch_size: int = 1000  # Batch size for processing citation embeddings
+    embedding_batch_size: int = 128  # GPU batch size for computing embeddings
     test_size: float = 0.0  # Fraction of papers to use for test set
     random_seed: int = 42  # Random seed for train/test split
 

@@ -92,6 +92,7 @@ inference: Inference | None = None
 
 @app.on_event("startup")
 async def startup_event():
+    # TODO: Need to reload this occasionally to keep the index up to date with the latest papers.
     global papers_df, arxiv_id_index, cited_by_index, inference
     papers_df = load_papers()
     arxiv_id_index = build_arxiv_id_index(papers_df)

@@ -178,8 +178,9 @@ def split_citations_by_papers(
 def generate_citation_embeddings_batch(
     citations: pl.DataFrame,
     sentence_encoder: sentence_transformers.SentenceTransformer,
-    batch_size: int,
+    shard_size: int,
     output_dir: Path,
+    embedding_batch_size: int = 256,
 ):
     """
     Generate embeddings for citation contexts in batches and save to disk.
@@ -187,23 +188,25 @@ def generate_citation_embeddings_batch(
     Args:
         citations: DataFrame containing citation reference contexts
         sentence_encoder: SentenceTransformer model for encoding
-        batch_size: Number of citations to process per batch
+        shard_size: Number of citations per shard file (controls file naming)
         output_dir: Directory to save batch embedding files
+        embedding_batch_size: GPU batch size for computing embeddings
     """
-    print(f"Generating citation embeddings in batches of {batch_size}...")
+    print(f"Generating citation embeddings in shards of {shard_size}...")
 
     # Get embedding size from first batch
     embedding_size = sentence_encoder.get_sentence_embedding_dimension()
 
-    for batch_start in range(0, len(citations), batch_size):
-        print(f"Processing batch starting at {batch_start}...")
-        citations_batch = citations[batch_start : batch_start + batch_size]
+    for shard_start in range(0, len(citations), shard_size):
+        print(f"Processing shard starting at {shard_start}...")
+        citations_batch = citations[shard_start : shard_start + shard_size]
 
         embeddings = sentence_encoder.encode(
             citations_batch["reference_contexts"].to_list(),
             show_progress_bar=True,
             output_value=None,
             convert_to_numpy=True,
+            batch_size=embedding_batch_size,
         )
 
         schema = {
@@ -226,7 +229,7 @@ def generate_citation_embeddings_batch(
             + [citations_batch["reference_id"]]
         )
 
-        output_path = output_dir / f"citation_embeddings_{batch_start}.parquet"
+        output_path = output_dir / f"citation_embeddings_{shard_start}.parquet"
         citation_embeddings.write_parquet(str(output_path), compression="zstd")
 
 
@@ -295,7 +298,9 @@ def main():
         print(f"Saving citations to {citations_path}")
         citations.write_ndjson(str(citations_path))
 
-        generate_citation_embeddings_batch(citations, sentence_encoder, cfg.data.embedding_batch_size, output_dir)
+        generate_citation_embeddings_batch(
+            citations, sentence_encoder, cfg.data.citations_batch_size, output_dir, cfg.data.embedding_batch_size
+        )
     else:
         # Split citations by papers
         print(f"Splitting citations into train/test (test_size={cfg.data.test_size}, seed={cfg.data.random_seed})")
@@ -317,13 +322,17 @@ def main():
         train_citations_path = train_dir / "citations.jsonl"
         print(f"Saving train citations to {train_citations_path}")
         train_citations.write_ndjson(str(train_citations_path))
-        generate_citation_embeddings_batch(train_citations, sentence_encoder, cfg.data.embedding_batch_size, train_dir)
+        generate_citation_embeddings_batch(
+            train_citations, sentence_encoder, cfg.data.citations_batch_size, train_dir, cfg.data.embedding_batch_size
+        )
 
         # Save test split
         test_citations_path = test_dir / "citations.jsonl"
         print(f"Saving test citations to {test_citations_path}")
         test_citations.write_ndjson(str(test_citations_path))
-        generate_citation_embeddings_batch(test_citations, sentence_encoder, cfg.data.embedding_batch_size, test_dir)
+        generate_citation_embeddings_batch(
+            test_citations, sentence_encoder, cfg.data.citations_batch_size, test_dir, cfg.data.embedding_batch_size
+        )
 
         print("\nDataset structure created:")
         print(f"  {output_dir}/")
