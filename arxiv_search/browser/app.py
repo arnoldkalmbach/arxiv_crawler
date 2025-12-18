@@ -35,7 +35,7 @@ XML_DOCS_DIR = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "xm
 MODEL_RUN_DIR = BROWSER_DIR.parent / "runs" / "lr1e-03_bs256_layers1_hidden768_heads12_20251114_151931"
 MODEL_CHECKPOINT = MODEL_RUN_DIR / "checkpoints" / "model_3500.pth"
 MODEL_CONFIG_FILE = MODEL_RUN_DIR / "config.yaml"
-PAPER_EMBEDDINGS_FILE = DATA_DIR / "paper_embeddings.parquet"
+PAPER_EMBEDDINGS_FILE = DATA_DIR / "v2" / "paper_embeddings.parquet"
 # Force CPU for inference (GPU compatibility/memory issues)
 DEVICE = "cpu"
 

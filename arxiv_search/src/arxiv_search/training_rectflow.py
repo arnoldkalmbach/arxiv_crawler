@@ -1,4 +1,4 @@
-"""Training and evaluation functions for citation embedding model."""
+"""Training and evaluation functions for rectified flow model."""
 
 import random
 from pathlib import Path
@@ -13,12 +13,12 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 
-def train_epoch(
+def train(
     rectified_flow: RectifiedFlow,
-    dataloader: DataLoader,  # wraps IterableCouplingDataset
+    dataloader: DataLoader,
     optimizer: torch.optim.Optimizer,
     device: str,
-    writer: Optional[SummaryWriter] = None,
+    max_steps: int,
     log_steps: int = 10,
     save_steps: int = 500,
     save_dir: Optional[Path] = None,
@@ -27,14 +27,14 @@ def train_epoch(
     max_grad_norm: float = 1.0,
 ) -> int:
     """
-    Train model for one epoch.
+    Train model for a fixed number of steps.
 
     Args:
-        model: Model to train
+        rectified_flow: RectifiedFlow model to train
         dataloader: Training data loader
         optimizer: Optimizer instance
         device: Device to train on
-        writer: TensorBoard writer for logging (optional)
+        max_steps: Total number of training steps
         log_steps: Log metrics every N steps
         save_steps: Save checkpoint every N steps
         save_dir: Directory to save checkpoints (required if save_steps > 0)
@@ -43,15 +43,27 @@ def train_epoch(
         max_grad_norm: Maximum gradient norm for clipping (None/<=0 disables clipping)
 
     Returns:
-        Final step number after this epoch
+        Trained model
     """
-    rectified_flow.velocity_field.train()
-    step = start_step
+    writer = None
+    if tensorboard_dir is not None:
+        writer = SummaryWriter(log_dir=str(tensorboard_dir))
 
-    if save_steps > 0 and save_dir is not None:
+    if save_dir is not None:
         save_dir.mkdir(exist_ok=True)
 
-    for batch in dataloader:
+    rectified_flow.velocity_field.train()
+    step = 0
+    data_iter = iter(dataloader)
+
+    while step < max_steps:
+        # Get next batch, cycling through data if needed
+        try:
+            batch = next(data_iter)
+        except StopIteration:
+            data_iter = iter(dataloader)
+            batch = next(data_iter)
+
         optimizer.zero_grad()
 
         X0 = batch["X0"].to(device)
@@ -84,6 +96,9 @@ def train_epoch(
             lr_scheduler.step()
         step += 1
 
+        # Get current learning rate
+        current_lr = optimizer.param_groups[0]["lr"]
+
         # Log to TensorBoard
         if writer is not None:
             writer.add_scalar("Loss/train", loss.item(), step)
@@ -94,7 +109,9 @@ def train_epoch(
 
         # Console logging
         if step % log_steps == 0:
-            print(f"[{step}] Loss: {loss.item():.4f}")
+            print(
+                f"[{step}/{max_steps}] Loss: {loss.item():.4f}, LR: {current_lr:.2e}, GradNorm: {grad_norm.item():.4f}"
+            )
 
         # Save checkpoint
         if save_steps > 0 and step % save_steps == 0 and save_dir is not None:

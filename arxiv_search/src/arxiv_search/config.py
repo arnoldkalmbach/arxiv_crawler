@@ -47,8 +47,14 @@ class TrainingConfig:
 
     batch_size: int = 256
     num_workers: int = 6
-    num_epochs: int = 20
     learning_rate: float = 1e-3
+
+    # Training duration
+    max_steps: int = 50000
+    warmup_steps: int = 1000
+
+    # Gradient clipping
+    grad_clip_norm: Optional[float] = 1.0
 
     # Logging
     log_steps: int = 10
@@ -85,14 +91,20 @@ class RectflowTrainingConfig:
 
     batch_size: int = 128
     num_workers: int = 6
-    num_epochs: int = 100
     learning_rate: float = 2e-4
     warmup_steps: int = 1000
     min_lr_ratio: float = 0.1  # Final LR as a fraction of base LR after cosine decay
     max_grad_norm: float = 1.0
 
+    # Training duration
+    max_steps: int = 50000
+    warmup_steps: int = 1000
+
+    # Gradient clipping
+    grad_clip_norm: Optional[float] = 1.0
+
     # Time weighting
-    train_time_weight: str = "linear"  # "linear" or "exponential"
+    train_time_weight: str = "uniform"  # "uniform" or "linear"
     train_time_distribution: str = "lognormal"  # "uniform" or "lognormal"
 
     # Logging
