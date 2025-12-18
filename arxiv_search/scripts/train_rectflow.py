@@ -1,4 +1,4 @@
-"""Training script for citation embedding model."""
+"""Training script for rectified flow model."""
 
 import argparse
 import math
@@ -177,7 +177,15 @@ def main():
         conditioning_checkpoint = str(latest_checkpoint)
         print(f"Using latest checkpoint: {conditioning_checkpoint}")
 
-    conditioning_model = load_model(conditioning_checkpoint)
+    conditioning_model = load_model(
+        conditioning_checkpoint,
+        device=args.device,
+        hidden_size=cfg.model.hidden_size,
+        num_hidden_layers=cfg.model.num_hidden_layers,
+        num_attention_heads=cfg.model.num_attention_heads,
+        intermediate_size=cfg.model.intermediate_size,
+        max_position_embeddings=cfg.model.max_position_embeddings,
+    )
     conditioning_model.requires_grad_(False)
 
     # Create velocity field based on config
@@ -222,8 +230,34 @@ def main():
         ),
     )
 
+    # Get training parameters
+    max_steps = cfg.rectflow_training.max_steps
+    warmup_steps = cfg.rectflow_training.warmup_steps
+    grad_clip_norm = getattr(cfg.rectflow_training, "grad_clip_norm", None)
+
+    # Create learning rate scheduler: linear warmup + cosine decay
+    warmup_scheduler = LinearLR(
+        optimizer,
+        start_factor=0.01,
+        end_factor=1.0,
+        total_iters=warmup_steps,
+    )
+    cosine_scheduler = CosineAnnealingLR(
+        optimizer,
+        T_max=max_steps - warmup_steps,
+        eta_min=cfg.rectflow_training.learning_rate * 0.01,
+    )
+    scheduler = SequentialLR(
+        optimizer,
+        schedulers=[warmup_scheduler, cosine_scheduler],
+        milestones=[warmup_steps],
+    )
+
     # Train model
-    print(f"\nStarting training for {cfg.rectflow_training.num_epochs} epochs...")
+    print(f"\nStarting training for {max_steps} steps...")
+    print(f"LR schedule: {warmup_steps} warmup steps + cosine decay")
+    if grad_clip_norm is not None:
+        print(f"Gradient clipping: max norm = {grad_clip_norm}")
     print("=" * 60)
 
     train(
@@ -231,7 +265,7 @@ def main():
         dataloader=train_loader,
         optimizer=optimizer,
         device=args.device,
-        num_epochs=cfg.rectflow_training.num_epochs,
+        max_steps=max_steps,
         log_steps=cfg.rectflow_training.log_steps,
         save_steps=cfg.rectflow_training.save_steps,
         save_dir=models_dir,

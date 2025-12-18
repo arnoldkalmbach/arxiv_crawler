@@ -6,6 +6,7 @@ from pathlib import Path
 import torch
 import torch.optim as optim
 from omegaconf import OmegaConf
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from torch.utils.data import DataLoader
 
 from arxiv_search.config import load_config, setup_run_directory
@@ -120,8 +121,34 @@ def main():
     # Create optimizer
     optimizer = optim.AdamW(model.parameters(), lr=cfg.training.learning_rate)
 
+    # Get training parameters
+    max_steps = cfg.training.max_steps
+    warmup_steps = cfg.training.warmup_steps
+    grad_clip_norm = getattr(cfg.training, "grad_clip_norm", None)
+
+    # Create learning rate scheduler: linear warmup + cosine decay
+    warmup_scheduler = LinearLR(
+        optimizer,
+        start_factor=0.01,
+        end_factor=1.0,
+        total_iters=warmup_steps,
+    )
+    cosine_scheduler = CosineAnnealingLR(
+        optimizer,
+        T_max=max_steps - warmup_steps,
+        eta_min=cfg.training.learning_rate * 0.01,
+    )
+    scheduler = SequentialLR(
+        optimizer,
+        schedulers=[warmup_scheduler, cosine_scheduler],
+        milestones=[warmup_steps],
+    )
+
     # Train model
-    print(f"\nStarting training for {cfg.training.num_epochs} epochs...")
+    print(f"\nStarting training for {max_steps} steps...")
+    print(f"LR schedule: {warmup_steps} warmup steps + cosine decay")
+    if grad_clip_norm is not None:
+        print(f"Gradient clipping: max norm = {grad_clip_norm}")
     print("=" * 60)
 
     train(
@@ -129,11 +156,13 @@ def main():
         dataloader=train_loader,
         optimizer=optimizer,
         device=args.device,
-        num_epochs=cfg.training.num_epochs,
+        max_steps=max_steps,
         log_steps=cfg.training.log_steps,
         save_steps=cfg.training.save_steps,
         save_dir=models_dir,
         tensorboard_dir=tensorboard_dir,
+        grad_clip_norm=grad_clip_norm,
+        scheduler=scheduler,
     )
 
     print("\n" + "=" * 60)

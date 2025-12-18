@@ -7,47 +7,64 @@ from typing import Optional
 import numpy as np
 import polars as pl
 import torch
+from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from transformers import BertModel
 
 
-def train_epoch(
+def train(
     model: BertModel,
     dataloader: DataLoader,
     optimizer: torch.optim.Optimizer,
     device: str,
-    writer: Optional[SummaryWriter] = None,
+    max_steps: int,
     log_steps: int = 10,
     save_steps: int = 500,
     save_dir: Optional[Path] = None,
-    start_step: int = 0,
-) -> int:
+    tensorboard_dir: Optional[Path] = None,
+    grad_clip_norm: Optional[float] = None,
+    scheduler: Optional[LRScheduler] = None,
+) -> BertModel:
     """
-    Train model for one epoch.
+    Train model for a fixed number of steps.
 
     Args:
         model: Model to train
         dataloader: Training data loader
         optimizer: Optimizer instance
         device: Device to train on
-        writer: TensorBoard writer for logging (optional)
+        max_steps: Total number of training steps
         log_steps: Log metrics every N steps
         save_steps: Save checkpoint every N steps
-        save_dir: Directory to save checkpoints (required if save_steps > 0)
-        start_step: Starting step number (for resuming training)
+        save_dir: Directory to save checkpoints
+        tensorboard_dir: Directory for TensorBoard logs
+        grad_clip_norm: Max norm for gradient clipping (None = no clipping)
+        scheduler: Learning rate scheduler (optional, stepped per batch)
 
     Returns:
-        Final step number after this epoch
+        Trained model
     """
-    model.train()
-    step = start_step
+    writer = None
+    if tensorboard_dir is not None:
+        writer = SummaryWriter(log_dir=str(tensorboard_dir))
 
-    if save_steps > 0 and save_dir is not None:
+    if save_dir is not None:
         save_dir.mkdir(exist_ok=True)
 
-    for batch in dataloader:
+    model.train()
+    step = 0
+    data_iter = iter(dataloader)
+
+    while step < max_steps:
+        # Get next batch, cycling through data if needed
+        try:
+            batch = next(data_iter)
+        except StopIteration:
+            data_iter = iter(dataloader)
+            batch = next(data_iter)
+
         optimizer.zero_grad()
 
         # Move batch to device
@@ -65,9 +82,24 @@ def train_epoch(
 
         # Backward pass
         loss.backward()
+
+        # Gradient clipping
+        if grad_clip_norm is not None and grad_clip_norm > 0:
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip_norm)
+        else:
+            # Compute grad norm for logging even if not clipping
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), float("inf"))
+
         optimizer.step()
 
+        # Step the scheduler
+        if scheduler is not None:
+            scheduler.step()
+
         step += 1
+
+        # Get current learning rate
+        current_lr = optimizer.param_groups[0]["lr"]
 
         # Compute sequence length statistics
         lengths_float = lengths.float()
@@ -82,11 +114,14 @@ def train_epoch(
             writer.add_scalar("SequenceLength/avg", avg_seq_length, step)
             writer.add_scalar("SequenceLength/p5", p5_seq_length, step)
             writer.add_scalar("SequenceLength/p95", p95_seq_length, step)
+            writer.add_scalar("LearningRate", current_lr, step)
+            writer.add_scalar("GradNorm", grad_norm.item(), step)
 
         # Console logging
         if step % log_steps == 0:
             print(
-                f"[{step}] Cossim: {cossim.item():.4f}, Loss: {loss.item():.4f}, "
+                f"[{step}/{max_steps}] Cossim: {cossim.item():.4f}, Loss: {loss.item():.4f}, "
+                f"LR: {current_lr:.2e}, GradNorm: {grad_norm.item():.4f}, "
                 f"Avg Tokens: {avg_seq_length:.1f} (p5: {p5_seq_length:.1f}, p95: {p95_seq_length:.1f})"
             )
 
@@ -95,56 +130,6 @@ def train_epoch(
             model_path = save_dir / f"model_{step}.pth"
             torch.save(model.state_dict(), model_path)
             print(f"[{step}] Saved model to {model_path}")
-
-    return step
-
-
-def train(
-    model: BertModel,
-    dataloader: DataLoader,
-    optimizer: torch.optim.Optimizer,
-    device: str,
-    num_epochs: int,
-    log_steps: int = 10,
-    save_steps: int = 500,
-    save_dir: Optional[Path] = None,
-    tensorboard_dir: Optional[Path] = None,
-) -> BertModel:
-    """
-    Train model for multiple epochs.
-
-    Args:
-        model: Model to train
-        dataloader: Training data loader
-        optimizer: Optimizer instance
-        device: Device to train on
-        num_epochs: Number of epochs to train
-        log_steps: Log metrics every N steps
-        save_steps: Save checkpoint every N steps
-        save_dir: Directory to save checkpoints
-        tensorboard_dir: Directory for TensorBoard logs
-
-    Returns:
-        Trained model
-    """
-    writer = None
-    if tensorboard_dir is not None:
-        writer = SummaryWriter(log_dir=str(tensorboard_dir))
-
-    step = 0
-    for epoch in range(num_epochs):
-        print(f"\nEpoch {epoch + 1}/{num_epochs}")
-        step = train_epoch(
-            model=model,
-            dataloader=dataloader,
-            optimizer=optimizer,
-            device=device,
-            writer=writer,
-            log_steps=log_steps,
-            save_steps=save_steps,
-            save_dir=save_dir,
-            start_step=step,
-        )
 
     if writer is not None:
         writer.close()

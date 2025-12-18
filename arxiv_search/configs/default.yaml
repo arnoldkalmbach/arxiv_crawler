@@ -1,14 +1,13 @@
 # Default configuration for citation embedding training and evaluation
 
 data:
-  data_dir: data
-  hf_dataset_name: "akalmbach-kinsol/generative-papers-arxiv"  # Set to HuggingFace dataset name for auto-download
+  data_dir: data/v2
+  hf_dataset_name: "akalmbach-kinsol/generative-papers-arxiv"
   citations_batch_size: 10000
   basemodel_name: "sentence-transformers/allenai-specter"
   
   # Dataset building settings
-  embedding_batch_size: 5000  # Batch size for processing citation embeddings
-  test_size: 0.1  # Fraction of papers to use for test set
+  test_size: 0.05  # Fraction of papers to use for test set
   random_seed: 42  # Random seed for train/test split
   
   # Collation settings
@@ -18,16 +17,22 @@ data:
 
 model:
   hidden_size: 768
-  num_hidden_layers: 1
+  num_hidden_layers: 2
   num_attention_heads: 12
   intermediate_size: 1536
   max_position_embeddings: 2048
 
 training:
-  batch_size: 256
+  batch_size: 320
   num_workers: 6
-  num_epochs: 20
   learning_rate: 1e-3
+  
+  # Training duration
+  max_steps: 50000  # Total training steps
+  warmup_steps: 1000  # Linear warmup steps before cosine decay
+  
+  # Gradient clipping
+  grad_clip_norm: 1.0  # Max norm for gradient clipping (null = no clipping)
   
   # Logging
   log_steps: 10
@@ -58,8 +63,15 @@ rectflow_training:
   min_lr_ratio: 0.1  # Final LR fraction after cosine decay
   max_grad_norm: 1.0
   
+  # Training duration
+  max_steps: 50000  # Total training steps
+  warmup_steps: 1000  # Linear warmup steps before cosine decay
+  
+  # Gradient clipping
+  grad_clip_norm: 1.0  # Max norm for gradient clipping (null = no clipping)
+  
   # Time weighting
-  train_time_weight: "uniform"  # "uniform"
+  train_time_weight: "uniform"  # "uniform" or "linear"
   train_time_distribution: "lognormal"  # "uniform" or "lognormal"
   
   # Logging
