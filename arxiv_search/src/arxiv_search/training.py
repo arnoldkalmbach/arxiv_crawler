@@ -1,5 +1,6 @@
 """Training and evaluation functions for citation embedding model."""
 
+import math
 import random
 from pathlib import Path
 from typing import Optional
@@ -12,6 +13,32 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from transformers import BertModel
+
+
+def build_warmup_cosine_lambda(warmup_steps: int, total_steps: int, min_lr_ratio: float):
+    """
+    Create LR lambda implementing linear warmup followed by cosine decay.
+
+    Args:
+        warmup_steps: Number of steps for linear warmup
+        total_steps: Total number of training steps
+        min_lr_ratio: Minimum learning rate as a ratio of base LR (e.g., 0.01 for 1%)
+
+    Returns:
+        Lambda function for use with LambdaLR scheduler
+    """
+    warmup_steps = max(1, warmup_steps)
+    total_steps = max(warmup_steps + 1, total_steps)
+
+    def lr_lambda(step: int):
+        if step < warmup_steps:
+            return float(step + 1) / float(warmup_steps)
+
+        progress = min(1.0, max(0.0, (step - warmup_steps) / float(total_steps - warmup_steps)))
+        cosine_decay = 0.5 * (1 + math.cos(math.pi * progress))
+        return float(min_lr_ratio + (1 - min_lr_ratio) * cosine_decay)
+
+    return lr_lambda
 
 
 def train(

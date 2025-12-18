@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 import torch.optim as optim
 from omegaconf import OmegaConf
-from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
+from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 
 from arxiv_search.config import load_config, setup_run_directory
@@ -16,7 +16,7 @@ from arxiv_search.dataloader import (
     get_collate_fn,
 )
 from arxiv_search.model import create_model
-from arxiv_search.training import train
+from arxiv_search.training import build_warmup_cosine_lambda, train
 
 
 def parse_args():
@@ -125,28 +125,21 @@ def main():
     max_steps = cfg.training.max_steps
     warmup_steps = cfg.training.warmup_steps
     grad_clip_norm = getattr(cfg.training, "grad_clip_norm", None)
+    min_lr_ratio = getattr(cfg.training, "min_lr_ratio", 0.01)
 
     # Create learning rate scheduler: linear warmup + cosine decay
-    warmup_scheduler = LinearLR(
+    scheduler = LambdaLR(
         optimizer,
-        start_factor=0.01,
-        end_factor=1.0,
-        total_iters=warmup_steps,
-    )
-    cosine_scheduler = CosineAnnealingLR(
-        optimizer,
-        T_max=max_steps - warmup_steps,
-        eta_min=cfg.training.learning_rate * 0.01,
-    )
-    scheduler = SequentialLR(
-        optimizer,
-        schedulers=[warmup_scheduler, cosine_scheduler],
-        milestones=[warmup_steps],
+        lr_lambda=build_warmup_cosine_lambda(
+            warmup_steps=warmup_steps,
+            total_steps=max_steps,
+            min_lr_ratio=min_lr_ratio,
+        ),
     )
 
     # Train model
     print(f"\nStarting training for {max_steps} steps...")
-    print(f"LR schedule: {warmup_steps} warmup steps + cosine decay")
+    print(f"LR schedule: {warmup_steps} warmup steps + cosine decay to {min_lr_ratio}x")
     if grad_clip_norm is not None:
         print(f"Gradient clipping: max norm = {grad_clip_norm}")
     print("=" * 60)

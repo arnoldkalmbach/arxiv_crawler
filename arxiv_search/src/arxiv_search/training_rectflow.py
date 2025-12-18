@@ -22,6 +22,7 @@ def train(
     log_steps: int = 10,
     save_steps: int = 500,
     save_dir: Optional[Path] = None,
+    tensorboard_dir: Optional[Path] = None,
     start_step: int = 0,
     lr_scheduler=None,
     max_grad_norm: float = 1.0,
@@ -38,6 +39,7 @@ def train(
         log_steps: Log metrics every N steps
         save_steps: Save checkpoint every N steps
         save_dir: Directory to save checkpoints (required if save_steps > 0)
+        tensorboard_dir: Directory for TensorBoard logs
         start_step: Starting step number (for resuming training)
         lr_scheduler: Optional learning rate scheduler stepped each iteration
         max_grad_norm: Maximum gradient norm for clipping (None/<=0 disables clipping)
@@ -120,65 +122,6 @@ def train(
             print(f"[{step}] Saved model to {model_path}")
 
     return step
-
-
-def train(
-    rectified_flow: RectifiedFlow,
-    dataloader: DataLoader,
-    optimizer: torch.optim.Optimizer,
-    device: str,
-    num_epochs: int,
-    log_steps: int = 10,
-    save_steps: int = 500,
-    save_dir: Optional[Path] = None,
-    tensorboard_dir: Optional[Path] = None,
-    lr_scheduler=None,
-    max_grad_norm: float = 1.0,
-) -> RectifiedFlow:
-    """
-    Train model for multiple epochs.
-
-    Args:
-        rectified_flow: RectifiedFlow model to train
-        dataloader: Training data loader
-        optimizer: Optimizer instance
-        device: Device to train on
-        num_epochs: Number of epochs to train
-        log_steps: Log metrics every N steps
-        save_steps: Save checkpoint every N steps
-        save_dir: Directory to save checkpoints
-        tensorboard_dir: Directory for TensorBoard logs
-        lr_scheduler: Optional learning rate scheduler stepped each iteration
-        max_grad_norm: Maximum gradient norm for clipping (None/<=0 disables clipping)
-
-    Returns:
-        Trained model
-    """
-    writer = None
-    if tensorboard_dir is not None:
-        writer = SummaryWriter(log_dir=str(tensorboard_dir))
-
-    step = 0
-    for epoch in range(num_epochs):
-        print(f"\nEpoch {epoch + 1}/{num_epochs}")
-        step = train_epoch(
-            rectified_flow=rectified_flow,
-            dataloader=dataloader,
-            optimizer=optimizer,
-            device=device,
-            writer=writer,
-            log_steps=log_steps,
-            save_steps=save_steps,
-            save_dir=save_dir,
-            start_step=step,
-            lr_scheduler=lr_scheduler,
-            max_grad_norm=max_grad_norm,
-        )
-
-    if writer is not None:
-        writer.close()
-
-    return rectified_flow
 
 
 def evaluate(
