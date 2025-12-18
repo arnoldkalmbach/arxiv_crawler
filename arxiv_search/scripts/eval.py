@@ -15,7 +15,8 @@ from arxiv_search.dataloader import (
     ensure_dataset_exists,
     get_collate_fn,
 )
-from arxiv_search.inference import Inference
+from arxiv_search.inference import DirectVectorInference
+from arxiv_search.search import ContextualSearch
 from arxiv_search.iterable_coupling_dataset import IterableCouplingDataset, get_coupling_collate_fn
 from arxiv_search.model import load_model, load_rectflow_model
 from arxiv_search.training import evaluate, print_metrics, save_examples, save_metrics
@@ -264,15 +265,16 @@ def main():
         if not paper_embeddings_file.exists():
             raise FileNotFoundError(f"Paper embeddings not found at {paper_embeddings_file}")
 
-        inference = Inference(
+        vector_inference = DirectVectorInference(task_model)
+        search = ContextualSearch(
             general_model=general_model,
-            task_model=task_model,
+            vector_inference=vector_inference,
             max_length=cfg.data.max_length,
             pad_to_multiple_of=cfg.data.pad_to_multiple_of,
             device=args.device,
         )
-        inference.build_index(paper_embeddings_file)
-        print(f"KNN index built with {len(inference.paper_embeddings)} papers.")
+        search.build_index(paper_embeddings_file)
+        print(f"KNN index built with {len(search.paper_embeddings)} papers.")
 
         # Run evaluation
         print("\nStarting evaluation...\n")
@@ -280,7 +282,7 @@ def main():
             model=task_model,
             dataloader=test_loader,
             device=args.device,
-            inference=inference,
+            inference=search,
             max_batches=cfg.evaluation.max_batches,
             show_progress=True,
             num_examples=20,  # Save 20 random examples

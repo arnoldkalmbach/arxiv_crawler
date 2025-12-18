@@ -19,8 +19,9 @@ from omegaconf import OmegaConf
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 
-from arxiv_search.inference import Inference
+from arxiv_search.inference import DirectVectorInference
 from arxiv_search.model import load_model
+from arxiv_search.search import ContextualSearch
 
 # Paths
 BROWSER_DIR = Path(__file__).parent
@@ -87,13 +88,13 @@ def build_cited_by_index(papers: pl.DataFrame) -> dict[str, list[str]]:
 papers_df: pl.DataFrame = None  # type: ignore
 arxiv_id_index: dict[str, dict] = {}
 cited_by_index: dict[str, list[str]] = {}
-inference: Inference | None = None
+search: ContextualSearch | None = None
 
 
 @app.on_event("startup")
 async def startup_event():
     # TODO: Need to reload this occasionally to keep the index up to date with the latest papers.
-    global papers_df, arxiv_id_index, cited_by_index, inference
+    global papers_df, arxiv_id_index, cited_by_index, search
     papers_df = load_papers()
     arxiv_id_index = build_arxiv_id_index(papers_df)
     cited_by_index = build_cited_by_index(papers_df)
@@ -115,15 +116,16 @@ async def startup_event():
         max_position_embeddings=model_cfg.model.max_position_embeddings,
     )
 
-    inference = Inference(
+    vector_inference = DirectVectorInference(task_model)
+    search = ContextualSearch(
         general_model=general_model,
-        task_model=task_model,
+        vector_inference=vector_inference,
         max_length=INFERENCE_MAX_LENGTH,
         pad_to_multiple_of=INFERENCE_PAD_TO_MULTIPLE_OF,
         device=DEVICE,
     )
-    inference.build_index(PAPER_EMBEDDINGS_FILE)
-    print(f"Semantic search ready with {len(inference.paper_embeddings)} paper embeddings")
+    search.build_index(PAPER_EMBEDDINGS_FILE)
+    print(f"Semantic search ready with {len(search.paper_embeddings)} paper embeddings")
 
 
 # Pydantic models for API
@@ -163,7 +165,7 @@ async def semantic_search(request: SemanticSearchRequest):
 
     # Overfetch by 1 to allow filtering out the context paper
     search_contexts = [(general_context, task_context)]
-    matches_df = inference.get_matches(search_contexts, top_k=request.top_k + 1)
+    matches_df = search.get_matches(search_contexts, top_k=request.top_k + 1)
 
     # Filter to first query's results and build response
     query_matches = matches_df.filter(matches_df["query_index"] == 0)
