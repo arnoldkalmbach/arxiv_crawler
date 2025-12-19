@@ -114,7 +114,9 @@ class RectFlowVectorInference(VectorInference):
         self.rectified_flow.velocity_field.eval()
         return self
 
-    def __call__(self, inputs_embeds: torch.Tensor, attention_mask: torch.Tensor) -> dict:
+    def __call__(
+        self, inputs_embeds: torch.Tensor, attention_mask: torch.Tensor, n_samples: int = 1, seed: int = 42
+    ) -> dict:
         """Generate task vectors via flow-based sampling.
 
         Samples from noise and integrates the flow conditioned on input embeddings.
@@ -127,7 +129,8 @@ class RectFlowVectorInference(VectorInference):
             Dict with 'pooler_output' containing task vectors (final trajectory point)
         """
         batch_size = inputs_embeds.shape[0]
-        X0 = torch.randn(batch_size, self.hidden_size, device=self._device)
+        generator = torch.Generator(device=self._device).manual_seed(seed)
+        X0 = torch.randn(batch_size * n_samples, self.hidden_size, device=self._device, generator=generator)
 
         self.sampler.sample_loop(
             num_steps=self.num_steps,
@@ -137,4 +140,4 @@ class RectFlowVectorInference(VectorInference):
         )
 
         pred_embeddings = self.sampler.trajectories[-1]
-        return {"pooler_output": pred_embeddings}
+        return {"pooler_output": pred_embeddings.reshape(batch_size, n_samples, self.hidden_size)}

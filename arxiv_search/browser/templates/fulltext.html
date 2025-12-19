@@ -266,6 +266,80 @@
         text-overflow: ellipsis;
     }
 
+    .search-params {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .search-params-toggle {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        user-select: none;
+    }
+
+    .search-params-toggle:hover {
+        color: var(--accent);
+    }
+
+    .search-params-toggle::before {
+        content: '▶';
+        display: inline-block;
+        transition: transform 0.2s;
+        font-size: 0.6rem;
+    }
+
+    .search-params-toggle.expanded::before {
+        transform: rotate(90deg);
+    }
+
+    .search-params-content {
+        display: none;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .search-params-content.visible {
+        display: block;
+    }
+
+    .param-control {
+        margin-bottom: 0.5rem;
+    }
+
+    .param-control label {
+        display: block;
+        color: var(--text-secondary);
+        margin-bottom: 0.15rem;
+        font-size: 0.7rem;
+    }
+
+    .param-control input {
+        width: 100%;
+        padding: 0.25rem 0.4rem;
+        background: var(--bg-primary);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        color: var(--text-primary);
+        font-size: 0.75rem;
+    }
+
+    .param-control input:focus {
+        outline: none;
+        border-color: var(--accent);
+    }
+
+    .param-hint {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        margin-top: 0.1rem;
+        font-style: italic;
+    }
+
     .suggestions-empty {
         padding: 2rem 1rem;
         text-align: center;
@@ -562,6 +636,38 @@
             <div class="suggestions-query" id="suggestions-query">
                 Select text to find relevant papers
             </div>
+            <div class="search-params">
+                <div class="search-params-toggle" id="params-toggle">
+                    Search Parameters
+                </div>
+                <div class="search-params-content" id="params-content">
+                    <div class="param-control">
+                        <label for="num-variants">Query Variants</label>
+                        <input type="number" id="num-variants" value="20" min="1" max="50">
+                        <div class="param-hint">Number of query variants to generate</div>
+                    </div>
+                    <div class="param-control">
+                        <label for="candidates-per-variant">Candidates/Variant</label>
+                        <input type="number" id="candidates-per-variant" value="3" min="1">
+                        <div class="param-hint">Top-k candidates per query variant</div>
+                    </div>
+                    <div class="param-control">
+                        <label for="lambda">Lambda (λ)</label>
+                        <input type="number" id="lambda" value="0.6" min="0" max="1" step="0.05">
+                        <div class="param-hint">Relevance vs diversity (0-1)</div>
+                    </div>
+                    <div class="param-control">
+                        <label for="aspect-decay">Aspect Decay</label>
+                        <input type="number" id="aspect-decay" value="0.5" min="0" max="1" step="0.05">
+                        <div class="param-hint">Multi-aspect weight decay</div>
+                    </div>
+                    <div class="param-control">
+                        <label for="aspect-threshold">Aspect Threshold</label>
+                        <input type="number" id="aspect-threshold" value="0.95" min="0" max="1" step="0.05">
+                        <div class="param-hint">Similarity threshold for aspects</div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div id="suggestions-list" class="suggestions-list">
             <div class="suggestions-empty">
@@ -724,6 +830,26 @@
     const suggestionsList = document.getElementById('suggestions-list');
     const arxivId = '{{ arxiv_id }}';
 
+    // Parameters toggle
+    const paramsToggle = document.getElementById('params-toggle');
+    const paramsContent = document.getElementById('params-content');
+    
+    paramsToggle.addEventListener('click', () => {
+        paramsToggle.classList.toggle('expanded');
+        paramsContent.classList.toggle('visible');
+    });
+
+    // Get current parameter values from UI
+    function getSearchParams() {
+        return {
+            num_query_variants: parseInt(document.getElementById('num-variants').value) || 20,
+            candidates_per_variant: parseInt(document.getElementById('candidates-per-variant').value) || 3,
+            lambda_: parseFloat(document.getElementById('lambda').value) || 0.6,
+            aspect_decay: parseFloat(document.getElementById('aspect-decay').value) || 0.5,
+            aspect_threshold: parseFloat(document.getElementById('aspect-threshold').value) || 0.95,
+        };
+    }
+
     let searchTimeout = null;
     let lastSearchText = '';
 
@@ -736,13 +862,15 @@
         suggestionsList.innerHTML = '<div class="suggestions-loading">Searching...</div>';
 
         try {
+            const params = getSearchParams();
             const response = await fetch('/api/semantic-search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     arxiv_id: arxivId,
                     selected_text: text,
-                    top_k: 10
+                    top_k: 10,
+                    ...params
                 })
             });
 

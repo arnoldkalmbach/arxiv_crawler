@@ -143,6 +143,11 @@ class SemanticSearchRequest(BaseModel):
     arxiv_id: str
     selected_text: str
     top_k: int = 5
+    num_query_variants: int = 20
+    candidates_per_variant: int = 3
+    lambda_: float = 0.6
+    aspect_decay: float = 0.5
+    aspect_threshold: float = 0.95
 
 
 @app.post("/api/semantic-search")
@@ -175,7 +180,15 @@ async def semantic_search(request: SemanticSearchRequest):
 
     # Overfetch by 1 to allow filtering out the context paper
     search_contexts = [(general_context, task_context)]
-    matches_df = contextual_search.get_matches(search_contexts, top_k=request.top_k + 1)
+    matches_df = contextual_search.get_diverse_matches(
+        search_contexts,
+        num_results=request.top_k + 1,
+        num_query_variants=request.num_query_variants,
+        candidates_per_variant=request.candidates_per_variant,
+        lambda_=request.lambda_,
+        aspect_decay=request.aspect_decay,
+        aspect_threshold=request.aspect_threshold,
+    )
 
     # Filter to first query's results and build response
     query_matches = matches_df.filter(matches_df["query_index"] == 0)
@@ -199,7 +212,7 @@ async def semantic_search(request: SemanticSearchRequest):
                 "arxiv_id": match_arxiv_id,
                 "title": match_paper.get("title", row.get("title", "Unknown")),
                 "abstract": match_paper.get("abstract", ""),
-                "distance": float(row.get("distance", 0.0)),
+                "distance": float(row.get("score", row.get("distance", 0.0))),
                 "citation_type": citation_type,
             }
         )
