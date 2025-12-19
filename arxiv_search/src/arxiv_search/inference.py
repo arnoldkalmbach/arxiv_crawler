@@ -1,116 +1,140 @@
-from pathlib import Path
+"""Vector inference wrappers for different model architectures."""
 
-import faiss
-import numpy as np
-import polars as pl
+from abc import ABC, abstractmethod
+
 import torch
-from sentence_transformers import SentenceTransformer
+from rectified_flow import RectifiedFlow
+from rectified_flow.samplers import CurvedEulerSampler
 from transformers import BertModel
 
-from .dataloader import collate_embeddings_with_targets
+
+class VectorInference(ABC):
+    """Base class for models that generate task vectors from input embeddings.
+
+    All implementations must support:
+    - `.to(device)` - move model to device
+    - `.eval()` - set to evaluation mode
+    - `__call__(inputs_embeds, attention_mask)` - generate task vectors
+
+    The __call__ method returns a dict with 'pooler_output' key containing
+    the generated task vectors of shape (batch_size, hidden_size).
+    """
+
+    @abstractmethod
+    def to(self, device: str) -> "VectorInference":
+        """Move model to device."""
+        pass
+
+    @abstractmethod
+    def eval(self) -> "VectorInference":
+        """Set to evaluation mode."""
+        pass
+
+    @abstractmethod
+    def __call__(self, inputs_embeds: torch.Tensor, attention_mask: torch.Tensor) -> dict:
+        """Generate task vectors from input embeddings.
+
+        Args:
+            inputs_embeds: Input embeddings of shape (batch_size, seq_len, hidden_size)
+            attention_mask: Attention mask of shape (batch_size, seq_len)
+
+        Returns:
+            Dict with 'pooler_output' key containing task vectors of shape (batch_size, hidden_size)
+        """
+        pass
 
 
-class Inference:
-    def __init__(
-        self,
-        general_model: SentenceTransformer,
-        task_model: BertModel,
-        max_length: int = 256,
-        pad_to_multiple_of: int = 8,
-        device: str = "cuda" if torch.cuda.is_available() else "cpu",
-    ):
-        self.general_model = general_model
-        self.task_model = task_model
-        self.max_length = max_length
-        self.pad_to_multiple_of = pad_to_multiple_of
-        self.device = device
+class DirectVectorInference(VectorInference):
+    """Wraps BertModel for direct vector inference.
 
-        # Will be set by build_index()
-        self.paper_embeddings: pl.DataFrame | None = None
-        self.knn_index: faiss.Index | None = None
+    The model takes input embeddings and produces task vectors directly
+    via the pooler output.
+    """
 
-        self.task_model.to(device)
-        self.task_model.eval()
+    def __init__(self, model: BertModel):
+        """Initialize with a BertModel.
 
-    def build_index(self, paper_embeddings_file: Path) -> None:
-        """Builds IndexFlatIP and stores paper_embeddings and knn_index as instance attributes."""
-        paper_embeddings = pl.read_parquet(paper_embeddings_file).with_row_index("index")
+        Args:
+            model: A BertModel instance (typically created via create_model or load_model)
+        """
+        self.model = model
 
-        embedding_dim = paper_embeddings["sentence_embedding"].to_numpy().shape[1]
-        knn_index = faiss.IndexFlatIP(embedding_dim)
-        knn_index.add(paper_embeddings["sentence_embedding"].to_numpy().astype("float32"))
+    def to(self, device: str) -> "DirectVectorInference":
+        """Move model to device."""
+        self.model.to(device)
+        return self
 
-        # Store as instance attributes
-        self.paper_embeddings = paper_embeddings
-        self.knn_index = knn_index
+    def eval(self) -> "DirectVectorInference":
+        """Set to evaluation mode."""
+        self.model.eval()
+        return self
 
-    def get_matches(self, search_contexts: list[tuple[str, str]], top_k: int = 10) -> pl.DataFrame:
-        """Returns flattened matches with query_index indicating which query each match belongs to."""
-        if self.knn_index is None or self.paper_embeddings is None:
-            raise ValueError("Index not built. Call build_index() first.")
+    def __call__(self, inputs_embeds: torch.Tensor, attention_mask: torch.Tensor) -> dict:
+        """Generate task vectors via forward pass through BertModel.
 
-        task_vectors = self.get_task_vectors(search_contexts)
-        distances, indices = self.knn_index.search(
-            task_vectors.cpu().numpy().astype("float32"), top_k
-        )  # shape (N, top_k)
+        Args:
+            inputs_embeds: Input embeddings of shape (batch_size, seq_len, hidden_size)
+            attention_mask: Attention mask of shape (batch_size, seq_len)
 
-        # Note: np.ravel() returns a flattened view whenever possible, while np.flatten() always returns a new copy.
-        n_queries = distances.shape[0]
-        flat_query_indices = np.repeat(np.arange(n_queries), top_k)
-        flat_match_indices = indices.ravel()
-        flat_distances = distances.ravel()
+        Returns:
+            Dict with 'pooler_output' containing task vectors
+        """
+        outputs = self.model(inputs_embeds=inputs_embeds, attention_mask=attention_mask)
+        return {"pooler_output": outputs["pooler_output"]}
 
-        results_frame = pl.DataFrame(
-            {
-                "query_index": flat_query_indices,
-                "match_index": flat_match_indices,
-                "distance": flat_distances,
-            }
+
+class RectFlowVectorInference(VectorInference):
+    """Wraps RectifiedFlow for flow-based vector inference.
+
+    The model generates task vectors by running a flow-based sampler
+    from noise to the target embedding space, conditioned on input embeddings.
+    """
+
+    def __init__(self, rectified_flow: RectifiedFlow, num_steps: int = 100):
+        """Initialize with a RectifiedFlow model.
+
+        Args:
+            rectified_flow: A RectifiedFlow instance with trained velocity field
+            num_steps: Number of integration steps for sampling (default: 50)
+        """
+        self.rectified_flow = rectified_flow
+        self.sampler = CurvedEulerSampler(rectified_flow=rectified_flow)
+        self.hidden_size = rectified_flow.velocity_field.conditioning_model.config.hidden_size
+        self.num_steps = num_steps
+        self._device = next(rectified_flow.velocity_field.parameters()).device
+
+    def to(self, device: str) -> "RectFlowVectorInference":
+        """Move model to device."""
+        self.rectified_flow.velocity_field.to(device)
+        self._device = device
+        return self
+
+    def eval(self) -> "RectFlowVectorInference":
+        """Set to evaluation mode."""
+        self.rectified_flow.velocity_field.eval()
+        return self
+
+    def __call__(self, inputs_embeds: torch.Tensor, attention_mask: torch.Tensor) -> dict:
+        """Generate task vectors via flow-based sampling.
+
+        Samples from noise and integrates the flow conditioned on input embeddings.
+
+        Args:
+            inputs_embeds: Conditioning embeddings of shape (batch_size, seq_len, hidden_size)
+            attention_mask: Attention mask of shape (batch_size, seq_len)
+
+        Returns:
+            Dict with 'pooler_output' containing task vectors (final trajectory point)
+        """
+        batch_size = inputs_embeds.shape[0]
+        X0 = torch.randn(batch_size, self.hidden_size, device=self._device)
+
+        self.sampler.sample_loop(
+            num_steps=self.num_steps,
+            x_0=X0,
+            y=inputs_embeds,
+            attention_mask=attention_mask,
         )
-        # Join results with paper embeddings to get paper metadata
-        return results_frame.join(self.paper_embeddings, left_on="match_index", right_on="index", how="left")
 
-    def get_task_vectors(self, search_contexts: list[tuple[str, str]]) -> torch.Tensor:
-        """Encodes each context as [general_sentence_embedding, task_token_embeddings] then passes through task_model."""
-        general_contexts, task_contexts = zip(*search_contexts)
-
-        # Get embeddings from general model
-        general_embeddings = self.general_model.encode(
-            general_contexts,
-            output_value="sentence_embedding",
-            convert_to_numpy=False,
-            convert_to_tensor=True,
-        )
-        context_embeddings = self.general_model.encode(
-            task_contexts,
-            output_value=None,
-            convert_to_numpy=False,
-            convert_to_tensor=True,
-        )
-
-        # Combine embeddings for each sample: [general_embedding, context_token_embeddings]
-        batch_inputs = []
-        for i in range(len(search_contexts)):
-            general_emb = general_embeddings[i].unsqueeze(0)  # [1, embed_dim]
-            context_tokens = context_embeddings[i]["token_embeddings"]  # [seq_len, embed_dim]
-            inputs_embeds = torch.vstack([general_emb, context_tokens])  # [1 + seq_len, embed_dim]
-            batch_inputs.append((inputs_embeds,))  # Single-element tuple for inference (no targets)
-
-        # Use collate function to batch and pad
-        batch = collate_embeddings_with_targets(
-            batch_inputs,
-            max_length=self.max_length,
-            pad_to_multiple_of=self.pad_to_multiple_of,
-        )
-
-        # Move to device and get predictions
-        inputs = batch["inputs"].to(self.device)
-        attention_mask = batch["attention_mask"].to(self.device)
-
-        with torch.no_grad():
-            outputs = self.task_model(inputs_embeds=inputs, attention_mask=attention_mask)
-            task_vectors = outputs["pooler_output"]
-
-        task_vectors = task_vectors / torch.norm(task_vectors, dim=1, keepdim=True)
-
-        return task_vectors
+        pred_embeddings = self.sampler.trajectories[-1]
+        return {"pooler_output": pred_embeddings}

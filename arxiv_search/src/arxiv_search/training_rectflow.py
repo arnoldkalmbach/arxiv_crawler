@@ -5,12 +5,15 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+import polars as pl
 import torch
 from rectified_flow import RectifiedFlow
 from rectified_flow.samplers import CurvedEulerSampler
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+
+from arxiv_search.search import ContextualSearch
 
 
 def train(
@@ -22,6 +25,7 @@ def train(
     log_steps: int = 10,
     save_steps: int = 500,
     save_dir: Optional[Path] = None,
+    tensorboard_dir: Optional[Path] = None,
     start_step: int = 0,
     lr_scheduler=None,
     max_grad_norm: float = 1.0,
@@ -38,6 +42,7 @@ def train(
         log_steps: Log metrics every N steps
         save_steps: Save checkpoint every N steps
         save_dir: Directory to save checkpoints (required if save_steps > 0)
+        tensorboard_dir: Directory for TensorBoard logs
         start_step: Starting step number (for resuming training)
         lr_scheduler: Optional learning rate scheduler stepped each iteration
         max_grad_norm: Maximum gradient norm for clipping (None/<=0 disables clipping)
@@ -122,69 +127,11 @@ def train(
     return step
 
 
-def train(
-    rectified_flow: RectifiedFlow,
-    dataloader: DataLoader,
-    optimizer: torch.optim.Optimizer,
-    device: str,
-    num_epochs: int,
-    log_steps: int = 10,
-    save_steps: int = 500,
-    save_dir: Optional[Path] = None,
-    tensorboard_dir: Optional[Path] = None,
-    lr_scheduler=None,
-    max_grad_norm: float = 1.0,
-) -> RectifiedFlow:
-    """
-    Train model for multiple epochs.
-
-    Args:
-        rectified_flow: RectifiedFlow model to train
-        dataloader: Training data loader
-        optimizer: Optimizer instance
-        device: Device to train on
-        num_epochs: Number of epochs to train
-        log_steps: Log metrics every N steps
-        save_steps: Save checkpoint every N steps
-        save_dir: Directory to save checkpoints
-        tensorboard_dir: Directory for TensorBoard logs
-        lr_scheduler: Optional learning rate scheduler stepped each iteration
-        max_grad_norm: Maximum gradient norm for clipping (None/<=0 disables clipping)
-
-    Returns:
-        Trained model
-    """
-    writer = None
-    if tensorboard_dir is not None:
-        writer = SummaryWriter(log_dir=str(tensorboard_dir))
-
-    step = 0
-    for epoch in range(num_epochs):
-        print(f"\nEpoch {epoch + 1}/{num_epochs}")
-        step = train_epoch(
-            rectified_flow=rectified_flow,
-            dataloader=dataloader,
-            optimizer=optimizer,
-            device=device,
-            writer=writer,
-            log_steps=log_steps,
-            save_steps=save_steps,
-            save_dir=save_dir,
-            start_step=step,
-            lr_scheduler=lr_scheduler,
-            max_grad_norm=max_grad_norm,
-        )
-
-    if writer is not None:
-        writer.close()
-
-    return rectified_flow
-
-
 def evaluate(
     rectified_flow: RectifiedFlow,
     dataloader: DataLoader,
     device: str,
+    search: Optional[ContextualSearch] = None,
     max_batches: Optional[int] = None,
     show_progress: bool = True,
     num_examples: int = 10,
@@ -197,6 +144,7 @@ def evaluate(
         rectified_flow: RectifiedFlow model to evaluate
         dataloader: DataLoader for evaluation set
         device: Device to run evaluation on
+        search: ContextualSearch instance for KNN retrieval (optional, enables example retrieval)
         max_batches: Maximum number of batches to evaluate (None = all)
         show_progress: Whether to show progress bar
         num_examples: Number of random examples to save with their metadata and cosine similarities
@@ -266,6 +214,39 @@ def evaluate(
         sampled_examples = [all_examples[i] for i in sampled_indices]
         # Sort by cosine similarity for easier reading
         sampled_examples.sort(key=lambda x: x["cosine_similarity"], reverse=True)
+
+        # Add KNN retrieval results for each example if search is provided
+        if search is not None:
+            # Get papers_file from the inner dataset (IterableCouplingDataset wraps CitationEmbeddingDataset)
+            inner_dataset = getattr(dataloader.dataset, "D1", dataloader.dataset)
+            papers_file = getattr(inner_dataset, "papers_file", None)
+
+            for example in sampled_examples:
+                meta = example["metadata"]
+                # Use the cited paper as the general context and citation context as task context
+                general_context = meta.get("cited_title", "")
+                task_context = meta.get("reference_context", "")
+
+                if general_context and papers_file is not None:
+                    # Perform KNN search
+                    search_contexts = [(general_context, task_context)]
+                    matches_df = search.get_matches(search_contexts, top_k=top_k)
+                    matches_with_meta = (
+                        pl.scan_ndjson(papers_file).join(matches_df.lazy(), on="arxiv_id", how="inner").collect()
+                    )
+
+                    # Filter to the first query's results and convert to list of dicts
+                    query_matches = matches_with_meta.filter(matches_with_meta["query_index"] == 0)
+                    knn_results = []
+                    for row in query_matches.iter_rows(named=True):
+                        knn_results.append(
+                            {
+                                "arxiv_id": row.get("arxiv_id", ""),
+                                "title": row.get("title", ""),
+                                "distance": row.get("distance", 0.0),
+                            }
+                        )
+                    example["knn_matches"] = knn_results
 
     # Compute metrics
     metrics = {

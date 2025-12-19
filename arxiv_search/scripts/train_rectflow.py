@@ -1,7 +1,6 @@
 """Training script for rectified flow model."""
 
 import argparse
-import math
 from pathlib import Path
 
 import torch
@@ -19,6 +18,7 @@ from arxiv_search.dataloader import (
 )
 from arxiv_search.iterable_coupling_dataset import IterableCouplingDataset, get_coupling_collate_fn
 from arxiv_search.model import VelocityField1dCrossAttention, VelocityField1dDiT, load_model
+from arxiv_search.training import build_warmup_cosine_lambda
 from arxiv_search.training_rectflow import train
 
 
@@ -46,42 +46,6 @@ def parse_args():
     # Use parse_known_args to separate normal args from config overrides
     args, unknown = parser.parse_known_args()
     return args, unknown
-
-
-def _estimate_total_steps(dataloader: DataLoader, num_epochs: int, fallback_per_epoch: int = 1000) -> int:
-    """
-    Estimate total training steps for scheduler.
-
-    If the dataloader has no length (e.g., IterableDataset), fall back to a sensible
-    per-epoch step count to keep scheduler progression stable.
-    """
-    try:
-        steps_per_epoch = len(dataloader)
-    except TypeError:
-        steps_per_epoch = None
-
-    if steps_per_epoch is None or steps_per_epoch <= 0:
-        steps_per_epoch = fallback_per_epoch
-
-    return max(1, num_epochs * steps_per_epoch)
-
-
-def _build_warmup_cosine_lambda(warmup_steps: int, total_steps: int, min_lr_ratio: float):
-    """
-    Create LR lambda implementing linear warmup followed by cosine decay.
-    """
-    warmup_steps = max(1, warmup_steps)
-    total_steps = max(warmup_steps + 1, total_steps)
-
-    def lr_lambda(step: int):
-        if step < warmup_steps:
-            return float(step + 1) / float(warmup_steps)
-
-        progress = min(1.0, max(0.0, (step - warmup_steps) / float(total_steps - warmup_steps)))
-        cosine_decay = 0.5 * (1 + math.cos(math.pi * progress))
-        return float(min_lr_ratio + (1 - min_lr_ratio) * cosine_decay)
-
-    return lr_lambda
 
 
 def main():
@@ -150,7 +114,7 @@ def main():
         collate_fn=collate_fn,
         persistent_workers=True if cfg.rectflow_training.num_workers > 0 else False,
         pin_memory=True if args.device == "cuda" else False,
-        prefetch_factor=3 if cfg.rectflow_training.num_workers > 0 else None,
+        prefetch_factor=2 if cfg.rectflow_training.num_workers > 0 else None,
     )
     print("Created train loader")
 
@@ -220,44 +184,25 @@ def main():
     optimizer = optim.AdamW(
         (param for param in velocity_model.parameters() if param.requires_grad), lr=cfg.rectflow_training.learning_rate
     )
-    total_steps = _estimate_total_steps(train_loader, cfg.rectflow_training.num_epochs)
-    lr_scheduler = LambdaLR(
-        optimizer,
-        lr_lambda=_build_warmup_cosine_lambda(
-            warmup_steps=cfg.rectflow_training.warmup_steps,
-            total_steps=total_steps,
-            min_lr_ratio=cfg.rectflow_training.min_lr_ratio,
-        ),
-    )
 
     # Get training parameters
     max_steps = cfg.rectflow_training.max_steps
     warmup_steps = cfg.rectflow_training.warmup_steps
-    grad_clip_norm = getattr(cfg.rectflow_training, "grad_clip_norm", None)
 
     # Create learning rate scheduler: linear warmup + cosine decay
-    warmup_scheduler = LinearLR(
+    lr_scheduler = LambdaLR(
         optimizer,
-        start_factor=0.01,
-        end_factor=1.0,
-        total_iters=warmup_steps,
-    )
-    cosine_scheduler = CosineAnnealingLR(
-        optimizer,
-        T_max=max_steps - warmup_steps,
-        eta_min=cfg.rectflow_training.learning_rate * 0.01,
-    )
-    scheduler = SequentialLR(
-        optimizer,
-        schedulers=[warmup_scheduler, cosine_scheduler],
-        milestones=[warmup_steps],
+        lr_lambda=build_warmup_cosine_lambda(
+            warmup_steps=warmup_steps,
+            total_steps=max_steps,
+            min_lr_ratio=cfg.rectflow_training.min_lr_ratio,
+        ),
     )
 
     # Train model
     print(f"\nStarting training for {max_steps} steps...")
-    print(f"LR schedule: {warmup_steps} warmup steps + cosine decay")
-    if grad_clip_norm is not None:
-        print(f"Gradient clipping: max norm = {grad_clip_norm}")
+    print(f"LR schedule: {warmup_steps} warmup steps + cosine decay to {cfg.rectflow_training.min_lr_ratio}x")
+    print(f"Gradient clipping: max norm = {cfg.rectflow_training.max_grad_norm}")
     print("=" * 60)
 
     train(
