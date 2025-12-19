@@ -90,7 +90,7 @@ class RectFlowVectorInference(VectorInference):
     from noise to the target embedding space, conditioned on input embeddings.
     """
 
-    def __init__(self, rectified_flow: RectifiedFlow, num_steps: int = 50):
+    def __init__(self, rectified_flow: RectifiedFlow, num_steps: int = 100):
         """Initialize with a RectifiedFlow model.
 
         Args:

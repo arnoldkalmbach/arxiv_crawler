@@ -88,22 +88,20 @@ def load_rectflow_model(
         max_length: Maximum sequence length (used for data_shape)
         device: Device to load model on
         conditioning_checkpoint: Optional path to conditioning model checkpoint.
-                                If not provided, uses rectflow_config.conditioning_checkpoint
+                                If not provided, creates empty model (weights come from velocity_field_checkpoint).
+                                Note: velocity_field_checkpoint contains conditioning model weights,
+                                so this is only needed if you want to verify/override those weights.
 
     Returns:
         Loaded RectifiedFlow instance
     """
-    # Extract conditioning checkpoint path
-    if conditioning_checkpoint is None:
-        conditioning_checkpoint = rectflow_config.conditioning_checkpoint
-
     # Extract rectflow config values
     velocity_field_type = rectflow_config.velocity_field_type
     num_blocks = rectflow_config.num_blocks
     num_heads = rectflow_config.num_heads
     mlp_ratio = rectflow_config.mlp_ratio
 
-    # Extract model config values for conditioning model
+    # Extract model config values for conditioning model architecture
     model_kwargs = {
         "hidden_size": model_config.hidden_size,
         "num_hidden_layers": model_config.num_hidden_layers,
@@ -112,8 +110,14 @@ def load_rectflow_model(
         "max_position_embeddings": model_config.max_position_embeddings,
     }
 
-    # Load conditioning model
-    conditioning_model = load_model(conditioning_checkpoint, device=device, **model_kwargs)
+    # Create or load conditioning model
+    # Note: The velocity field checkpoint contains conditioning model weights,
+    # so loading from a separate checkpoint is optional (weights get overwritten anyway)
+    if conditioning_checkpoint is not None:
+        conditioning_model = load_model(conditioning_checkpoint, device=device, **model_kwargs)
+    else:
+        # Just create the architecture - weights will come from velocity field checkpoint
+        conditioning_model = create_model(device=device, **model_kwargs)
     conditioning_model.requires_grad_(False)
 
     # Create velocity field based on type
@@ -144,7 +148,7 @@ def load_rectflow_model(
         train_time_weight="uniform",  # FIXME
         train_time_distribution="lognormal",
         device=device,
-        is_independent_coupling=False
+        is_independent_coupling=False,
     )
 
     return rectified_flow

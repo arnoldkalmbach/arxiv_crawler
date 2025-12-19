@@ -114,7 +114,7 @@ def main():
         collate_fn=collate_fn,
         persistent_workers=True if cfg.rectflow_training.num_workers > 0 else False,
         pin_memory=True if args.device == "cuda" else False,
-        prefetch_factor=3 if cfg.rectflow_training.num_workers > 0 else None,
+        prefetch_factor=2 if cfg.rectflow_training.num_workers > 0 else None,
     )
     print("Created train loader")
 

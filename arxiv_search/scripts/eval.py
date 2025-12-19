@@ -15,10 +15,10 @@ from arxiv_search.dataloader import (
     ensure_dataset_exists,
     get_collate_fn,
 )
-from arxiv_search.inference import DirectVectorInference
-from arxiv_search.search import ContextualSearch
+from arxiv_search.inference import DirectVectorInference, RectFlowVectorInference
 from arxiv_search.iterable_coupling_dataset import IterableCouplingDataset, get_coupling_collate_fn
 from arxiv_search.model import load_model, load_rectflow_model
+from arxiv_search.search import ContextualSearch
 from arxiv_search.training import evaluate, print_metrics, save_examples, save_metrics
 from arxiv_search.training_rectflow import evaluate as evaluate_rectflow
 
@@ -225,12 +225,35 @@ def main():
         )
         print("RectifiedFlow model loaded successfully.")
 
+        # Load general model for inference (must match the model used to build embeddings)
+        print(f"\nLoading general model: {cfg.data.basemodel_name}...")
+        general_model = SentenceTransformer(cfg.data.basemodel_name, device=args.device)
+        print("General model loaded successfully.")
+
+        # Build KNN index for retrieval examples
+        print("\nBuilding KNN index...")
+        paper_embeddings_file = data_dir / "paper_embeddings.parquet"
+        if not paper_embeddings_file.exists():
+            raise FileNotFoundError(f"Paper embeddings not found at {paper_embeddings_file}")
+
+        vector_inference = RectFlowVectorInference(rectified_flow, num_steps=50)
+        search = ContextualSearch(
+            general_model=general_model,
+            vector_inference=vector_inference,
+            max_length=cfg.data.max_length,
+            pad_to_multiple_of=cfg.data.pad_to_multiple_of,
+            device=args.device,
+        )
+        search.build_index(paper_embeddings_file)
+        print(f"KNN index built with {len(search.paper_embeddings)} papers.")
+
         # Run evaluation
         print("\nStarting evaluation...\n")
         metrics = evaluate_rectflow(
             rectified_flow=rectified_flow,
             dataloader=test_loader,
             device=args.device,
+            search=search,
             max_batches=cfg.evaluation.max_batches,
             show_progress=True,
             num_examples=20,  # Save 20 random examples

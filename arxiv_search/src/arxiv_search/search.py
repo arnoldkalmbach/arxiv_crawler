@@ -141,6 +141,8 @@ class ContextualSearch:
         for i in range(len(search_contexts)):
             general_emb = general_embeddings[i].unsqueeze(0)  # [1, embed_dim]
             context_tokens = context_embeddings[i]["token_embeddings"]  # [seq_len, embed_dim]
+            if context_tokens.shape[0] > self.max_length:
+                print(f"Truncating context tokens from {context_tokens.shape[0]} to {self.max_length}")
             inputs_embeds = torch.vstack([general_emb, context_tokens])  # [1 + seq_len, embed_dim]
             batch_inputs.append((inputs_embeds,))  # Single-element tuple for inference (no targets)
 
