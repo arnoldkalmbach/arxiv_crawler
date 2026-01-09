@@ -94,6 +94,10 @@ class ContextualSearch:
         with torch.no_grad():
             outputs = self.vector_inference(**batch)
             task_vectors = outputs["pooler_output"]
+            # RectFlowVectorInference returns (batch, n_samples, hidden) even when n_samples=1.
+            # FAISS expects a 2D array (batch, hidden), so squeeze the singleton dimension.
+            if task_vectors.ndim == 3 and task_vectors.shape[1] == 1:
+                task_vectors = task_vectors[:, 0, :]
             task_vectors = task_vectors / torch.norm(task_vectors, dim=1, keepdim=True)
 
         distances, indices = self.knn_index.search(
@@ -147,7 +151,7 @@ class ContextualSearch:
         # Flatten for batched knn search: (n_queries * num_query_variants, hidden_size)
         query_vectors_flat = query_vectors.reshape(-1, hidden_size)
 
-        print((query_vectors_flat @ query_vectors_flat.T).round(3))
+        # print((query_vectors_flat @ query_vectors_flat.T).round(3))
 
         _, all_indices = self.knn_index.search(query_vectors_flat, candidates_per_variant)
         # all_indices: (n_queries * num_query_variants, candidates_per_variant)

@@ -5,12 +5,19 @@ Run with:
     cd arxiv_search && uv run uvicorn browser.app:app --reload --port 8000
 """
 
+import gzip
 import json
+import re
+import xml.etree.ElementTree as ET
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
 import httpx
+import numpy as np
 import polars as pl
+import umap
+from arxiv_crawler.tei_parser import TEI_NS, get_element_text
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
@@ -27,6 +34,7 @@ BROWSER_DIR = Path(__file__).parent
 DATA_DIR = BROWSER_DIR.parent / "data"
 CRAWLER_STATE_FILE = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "crawler_state.json"
 PAPERS_FILE = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "papers.jsonl"
+CRAWLER_DATA_DIR = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2"
 
 # Semantic search / inference paths - RectFlow model
 RECTFLOW_RUN_DIR = (
@@ -54,6 +62,105 @@ app = FastAPI(title="arXiv Browser")
 
 # Setup Jinja2 templates
 templates = Jinja2Templates(directory=BROWSER_DIR / "templates")
+
+
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9])")
+
+
+def _normalize_ws(text: str) -> str:
+    return " ".join((text or "").split()).strip()
+
+
+def split_sentences(text: str) -> list[str]:
+    """Cheap sentence splitter for demo usage (no extra deps)."""
+    text = _normalize_ws(text)
+    if not text:
+        return []
+    # Avoid pathological super-long sentences from PDFs/Math.
+    parts = _SENTENCE_SPLIT_RE.split(text)
+    sentences = []
+    for s in parts:
+        s = _normalize_ws(s)
+        if not s:
+            continue
+        sentences.append(s)
+    return sentences
+
+
+def _tei_find_text(root: ET.Element, xpath: str) -> str:
+    el = root.find(xpath, TEI_NS)
+    return _normalize_ws(get_element_text(el)) if el is not None else ""
+
+
+def extract_section_sentences_from_tei(xml_path: Path) -> list[dict]:
+    """Extract sentences from TEI XML, tracking section provenance.
+
+    Returns list of dicts with keys: section_path, section_title, sentence.
+    """
+    with gzip.open(xml_path, "rt", encoding="utf-8") as f:
+        tree = ET.parse(f)
+    root = tree.getroot()
+
+    out: list[dict] = []
+
+    # Abstract (front matter), if present
+    abstract_text = _tei_find_text(root, ".//tei:text/tei:front/tei:abstract") or _tei_find_text(
+        root, ".//tei:profileDesc/tei:abstract"
+    )
+    for s in split_sentences(abstract_text):
+        out.append({"section_path": "abstract", "section_title": "Abstract", "sentence": s})
+
+    body = root.find(".//tei:text/tei:body", TEI_NS) or root.find(".//tei:body", TEI_NS)
+    if body is None:
+        return out
+
+    # Iterative DFS over nested <div> sections.
+    # We propagate the top-level section title down to all nested subsections so
+    # coloring can be done at a higher semantic level.
+    stack: list[tuple[ET.Element, list[int], str | None]] = [(body, [], None)]
+    while stack:
+        node, path, top_title = stack.pop()
+        divs = list(node.findall("./tei:div", TEI_NS))
+        for i, div in enumerate(divs, 1):
+            new_path = path + [i]
+            section_path = ".".join(map(str, new_path))
+            this_title = _normalize_ws(_tei_find_text(div, "./tei:head")) or f"Section {section_path}"
+            # Only "promote" the title if this is a top-level section.
+            inherited_top = this_title if len(new_path) == 1 else (top_title or this_title)
+            section_title = inherited_top
+
+            # Collect paragraph text at this div level only; nested divs will be handled separately.
+            paras = [_normalize_ws(get_element_text(p)) for p in div.findall("./tei:p", TEI_NS)]
+            text = "\n\n".join([p for p in paras if p])
+            for s in split_sentences(text):
+                out.append({"section_path": section_path, "section_title": section_title, "sentence": s})
+
+            # Push children for recursion
+            for child in reversed(div.findall("./tei:div", TEI_NS)):
+                stack.append((child, new_path, inherited_top))
+
+    return out
+
+
+def _resolve_tei_path_for_paper(paper: dict, arxiv_id: str) -> Path:
+    xml_file_path = paper.get("xml_file_path") if paper else None
+    if xml_file_path:
+        return CRAWLER_DATA_DIR / xml_file_path
+    # Fallback (older naming): xml_docs/{arxiv_id.replace('/', '_')}.xml.gz
+    return CRAWLER_DATA_DIR / "xml_docs" / f"{arxiv_id.replace('/', '_')}.xml.gz"
+
+
+@app.get("/api/health")
+async def health():
+    """Lightweight readiness endpoint."""
+    return JSONResponse(
+        content={
+            "ok": True,
+            "papers_loaded": papers_df is not None,
+            "num_papers": int(len(arxiv_id_index)) if arxiv_id_index else 0,
+            "semantic_ready": contextual_search is not None and contextual_search.knn_index is not None,
+        }
+    )
 
 
 def load_papers() -> pl.DataFrame:
@@ -404,6 +511,181 @@ async def paper_fulltext(request: Request, arxiv_id: str):
             "title": title,
             "authors": authors,
         },
+    )
+
+
+@app.get("/paper/{arxiv_id:path}/graph", response_class=HTMLResponse)
+async def paper_graph(request: Request, arxiv_id: str):
+    """Interactive UMAP graph view for a paper."""
+    paper = arxiv_id_index.get(arxiv_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail=f"Paper {arxiv_id} not found")
+
+    return templates.TemplateResponse(
+        "graph.html",
+        {
+            "request": request,
+            "paper": paper,
+        },
+    )
+
+
+@app.get("/api/paper/{arxiv_id:path}/graph-data")
+async def paper_graph_data(arxiv_id: str, top_k: int = 2, max_sentences: int = 120):
+    """Compute TEI sentence matches and return Plotly-ready UMAP coords."""
+    if contextual_search is None:
+        raise HTTPException(status_code=503, detail="Semantic search not ready yet")
+
+    paper = arxiv_id_index.get(arxiv_id)
+    if not paper:
+        raise HTTPException(status_code=404, detail=f"Paper {arxiv_id} not found")
+
+    title = paper.get("title", "")
+    abstract = paper.get("abstract", "")
+    general_context = f"{title}[SEP]{abstract}"
+
+    tei_path = _resolve_tei_path_for_paper(paper, arxiv_id)
+    if not tei_path.exists():
+        raise HTTPException(status_code=404, detail=f"TEI XML not found for {arxiv_id}: {tei_path}")
+
+    sentence_rows = extract_section_sentences_from_tei(tei_path)
+    # Basic filtering to keep quality reasonable.
+    filtered = [
+        r
+        for r in sentence_rows
+        if 30 <= len(r["sentence"]) <= 350 and not r["sentence"].startswith(("Figure", "Table"))
+    ]
+    if max_sentences > 0:
+        filtered = filtered[:max_sentences]
+
+    if not filtered:
+        raise HTTPException(status_code=422, detail="No usable sentences extracted from TEI")
+
+    search_contexts = [(general_context, r["sentence"]) for r in filtered]
+
+    # RectFlow inference is expensive; for the interactive graph view we run fewer steps.
+    original_steps = getattr(getattr(contextual_search, "vector_inference", None), "num_steps", None)
+    try:
+        if original_steps is not None:
+            contextual_search.vector_inference.num_steps = min(int(original_steps), 12)  # type: ignore[attr-defined]
+        matches_df = contextual_search.get_matches(search_contexts, top_k=max(1, int(top_k)))
+    finally:
+        if original_steps is not None:
+            contextual_search.vector_inference.num_steps = int(original_steps)  # type: ignore[attr-defined]
+
+    # For each matched paper, keep the best scoring (max similarity) row and inherit the section label from that query.
+    best_by_arxiv_id: dict[str, dict] = {}
+    for row in matches_df.iter_rows(named=True):
+        match_id = row.get("arxiv_id")
+        if not match_id:
+            continue
+        if match_id == arxiv_id:
+            continue
+
+        qidx = int(row.get("query_index", 0))
+        score = float(row.get("distance", row.get("score", 0.0)))
+        meta = filtered[qidx] if 0 <= qidx < len(filtered) else {"section_title": "Unknown", "sentence": ""}
+        section_title = meta.get("section_title", "Unknown")
+        source_sentence = meta.get("sentence", "")
+
+        prev = best_by_arxiv_id.get(match_id)
+        if prev is None or score > float(prev.get("score", -1e9)):
+            best_by_arxiv_id[match_id] = {
+                "arxiv_id": match_id,
+                "score": score,
+                "section_title": section_title,
+                "source_sentence": source_sentence,
+            }
+
+    if not best_by_arxiv_id:
+        raise HTTPException(status_code=422, detail="No matches produced (after filtering self-match)")
+
+    # Build embedding matrix for UMAP
+    ids = list(best_by_arxiv_id.keys())
+    if arxiv_id in arxiv_id_index:
+        ids.append(arxiv_id)  # add self node (if embedding exists)
+
+    if contextual_search.paper_embeddings is None:
+        raise HTTPException(status_code=500, detail="Paper embeddings not loaded")
+
+    emb_df = contextual_search.paper_embeddings.filter(pl.col("arxiv_id").is_in(ids)).select(
+        ["arxiv_id", "sentence_embedding"]
+    )
+    emb_map: dict[str, np.ndarray] = {}
+    for r in emb_df.iter_rows(named=True):
+        emb_map[r["arxiv_id"]] = np.array(r["sentence_embedding"], dtype=np.float32)
+
+    ordered_ids = [pid for pid in ids if pid in emb_map]
+    if len(ordered_ids) < 3:
+        raise HTTPException(status_code=422, detail="Not enough embedded points to build a 2D map")
+
+    X = np.stack([emb_map[pid] for pid in ordered_ids], axis=0)
+
+    # Keep demo responsive on CPU-limited machines.
+    try:
+        import numba  # type: ignore
+
+        numba.set_num_threads(1)
+    except Exception:
+        pass
+
+    reducer = umap.UMAP(
+        n_components=2,
+        n_neighbors=min(15, max(len(ordered_ids) - 1, 2)),
+        min_dist=0.1,
+        metric="cosine",
+        random_state=42,
+        # Demo mode: keep UMAP fast; we don't care about perfect layouts.
+        n_epochs=40,
+        n_jobs=1,
+    )
+    coords = reducer.fit_transform(X)
+
+    points = []
+    for pid, (x, y) in zip(ordered_ids, coords, strict=True):
+        if pid == arxiv_id:
+            pmeta = paper
+            points.append(
+                {
+                    "arxiv_id": pid,
+                    "title": pmeta.get("title", pid),
+                    "url": f"/paper/{pid}",
+                    "x": float(x),
+                    "y": float(y),
+                    "section_title": "(self)",
+                    "score": None,
+                    "source_sentence": None,
+                }
+            )
+            continue
+
+        pmeta = arxiv_id_index.get(pid, {})
+        best = best_by_arxiv_id[pid]
+        points.append(
+            {
+                "arxiv_id": pid,
+                "title": pmeta.get("title", pid),
+                "url": f"/paper/{pid}",
+                "x": float(x),
+                "y": float(y),
+                "section_title": best.get("section_title", "Unknown"),
+                "score": float(best.get("score", 0.0)),
+                "source_sentence": best.get("source_sentence", ""),
+            }
+        )
+
+    section_counts: dict[str, int] = defaultdict(int)
+    for p in points:
+        section_counts[p["section_title"]] += 1
+
+    return JSONResponse(
+        content={
+            "paper": {"arxiv_id": arxiv_id, "title": title},
+            "num_sentences": len(filtered),
+            "top_k": int(top_k),
+            "points": points,
+            "section_counts": dict(section_counts),
+        }
     )
 
 

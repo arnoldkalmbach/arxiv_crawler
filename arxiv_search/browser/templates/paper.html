@@ -27,6 +27,7 @@
         {% endif %}
         <div style="margin-top: 0.75rem;">
             <a href="/paper/{{ paper.arxiv_id }}/fulltext" class="external-link">📖 Read Full Text</a>
+            · <a href="/paper/{{ paper.arxiv_id }}/graph" class="external-link">🗺️ Graph view</a>
             · <a href="{{ paper.arxiv_url }}" target="_blank" class="external-link">📄 View on arXiv →</a>
             {% if paper.pdf_url %}
                 · <a href="{{ paper.pdf_url }}" target="_blank" class="external-link">📥 PDF</a>
