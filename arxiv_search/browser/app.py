@@ -139,8 +139,8 @@ class SemanticSearchRequest(BaseModel):
     arxiv_id: str
     selected_text: str
     top_k: int = 5
-    num_query_variants: int = 20
-    candidates_per_variant: int = 3
+    num_query_variants: int = 3
+    candidates_per_variant: int = 20
     lambda_: float = 0.6
     aspect_decay: float = 0.5
     aspect_threshold: float = 0.95
@@ -203,6 +203,14 @@ async def semantic_search(request: SemanticSearchRequest):
         # Determine if this is an existing citation or a proposed one
         citation_type = "existing" if match_arxiv_id in cited_arxiv_ids else "proposed"
 
+        # Extract author and year info
+        authors = match_paper.get("authors", [])
+        first_author = authors[0] if authors else "Unknown"
+
+        # Extract year from published date (format: YYYY-MM-DD or similar)
+        published = match_paper.get("published", "")
+        year = published[:4] if published and len(published) >= 4 else ""
+
         results.append(
             {
                 "arxiv_id": match_arxiv_id,
@@ -210,6 +218,8 @@ async def semantic_search(request: SemanticSearchRequest):
                 "abstract": match_paper.get("abstract", ""),
                 "distance": float(row.get("score", row.get("distance", 0.0))),
                 "citation_type": citation_type,
+                "first_author": first_author,
+                "year": year,
             }
         )
 

@@ -477,7 +477,7 @@
         <div class="suggestions-header">
             <h3>Suggest Citations</h3>
             <div class="suggestions-query" id="suggestions-query">
-                Select text in the PDF to find relevant papers
+                Loading similar papers...
             </div>
             <div class="search-params">
                 <div class="search-params-toggle" id="params-toggle">
@@ -486,12 +486,12 @@
                 <div class="search-params-content" id="params-content">
                     <div class="param-control">
                         <label for="num-variants">Query Variants</label>
-                        <input type="number" id="num-variants" value="20" min="1" max="50">
+                        <input type="number" id="num-variants" value="3" min="1" max="50">
                         <div class="param-hint">Number of query variants to generate</div>
                     </div>
                     <div class="param-control">
                         <label for="candidates-per-variant">Candidates/Variant</label>
-                        <input type="number" id="candidates-per-variant" value="3" min="1">
+                        <input type="number" id="candidates-per-variant" value="20" min="1">
                         <div class="param-hint">Top-k candidates per query variant</div>
                     </div>
                     <div class="param-control">
@@ -513,8 +513,8 @@
             </div>
         </div>
         <div id="suggestions-list" class="suggestions-list">
-            <div class="suggestions-empty">
-                Highlight text in the PDF to see citation suggestions.
+            <div class="suggestions-loading">
+                Loading similar papers...
             </div>
         </div>
     </aside>
@@ -787,12 +787,20 @@
 
     let searchTimeout = null;
     let lastSearchText = '';
+    let defaultResults = null;
+    let isLoadingDefault = false;
 
-    async function searchCitations(text) {
-        if (!text || text === lastSearchText) return;
-        lastSearchText = text;
+    async function searchCitations(text, isDefault = false) {
+        if (!isDefault && text === lastSearchText) return;
+        if (!isDefault) lastSearchText = text;
 
-        suggestionsQuery.textContent = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        // Update query display
+        if (isDefault) {
+            suggestionsQuery.textContent = 'Papers similar to this work (default)';
+        } else {
+            suggestionsQuery.textContent = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        }
+        
         suggestionsList.innerHTML = '<div class="suggestions-loading">Searching...</div>';
 
         try {
@@ -814,30 +822,63 @@
 
             const data = await response.json();
 
+            // Build results HTML
+            let resultsHtml;
             if (data.matches && data.matches.length > 0) {
-                suggestionsList.innerHTML = data.matches.map((match) => {
+                resultsHtml = data.matches.map((match) => {
                     const badgeClass = match.citation_type === 'existing' ? 'existing' : 'proposed';
                     const badgeText = match.citation_type === 'existing' ? 'Cited' : 'Proposed';
                     const title = match.title || match.arxiv_id;
+                    
+                    // Extract last name from first author (handles "First Last" format)
+                    let authorLastName = 'Unknown';
+                    if (match.first_author) {
+                        const nameParts = match.first_author.trim().split(/\s+/);
+                        authorLastName = nameParts[nameParts.length - 1];
+                    }
+                    
+                    // Build author-year prefix
+                    const authorYear = match.year 
+                        ? `[${authorLastName}, ${match.year}]`
+                        : authorLastName;
+                    
                     return `
                     <div class="suggestion-item" 
                          data-title="${escapeHtml(title)}" 
                          data-abstract="${escapeHtml(match.abstract || '')}">
-                        <a href="/paper/${match.arxiv_id}" target="_blank">${escapeHtml(title)}</a>
+                        <a href="/paper/${match.arxiv_id}" target="_blank">
+                            ${escapeHtml(authorYear)} ${escapeHtml(title)}
+                        </a>
                         <div class="result-meta">
                             <span class="citation-badge ${badgeClass}">${badgeText}</span>
                             <span class="distance">Score: ${match.distance.toFixed(3)}</span>
                         </div>
                     </div>
                 `}).join('');
-                
-                attachPreviewListeners();
             } else {
-                suggestionsList.innerHTML = '<div class="suggestions-empty">No similar papers found.</div>';
+                resultsHtml = '<div class="suggestions-empty">No similar papers found.</div>';
             }
+
+            // If this is the default search, store it
+            if (isDefault) {
+                defaultResults = resultsHtml;
+                isLoadingDefault = false;
+            }
+
+            // Display results
+            suggestionsList.innerHTML = resultsHtml;
+            attachPreviewListeners();
+            
         } catch (error) {
             console.error('Citation search error:', error);
-            suggestionsList.innerHTML = `<div class="suggestions-error">Error: ${error.message}</div>`;
+            const errorHtml = `<div class="suggestions-error">Error: ${error.message}</div>`;
+            
+            if (isDefault) {
+                defaultResults = errorHtml;
+                isLoadingDefault = false;
+            }
+            
+            suggestionsList.innerHTML = errorHtml;
         }
     }
 
@@ -848,14 +889,30 @@
             const selection = window.getSelection();
             const selectedText = selection.toString().trim();
 
-            // Only search if selection has meaningful length and is from PDF area
             if (selectedText.length >= 10) {
+                // User has selected meaningful text - search for it
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
                     searchCitations(selectedText);
                 }, 300);
+            } else if (selectedText.length === 0 && defaultResults && !isLoadingDefault) {
+                // No text selected - show default results
+                suggestionsQuery.textContent = 'Papers similar to this work (default)';
+                suggestionsList.innerHTML = defaultResults;
+                attachPreviewListeners();
+                lastSearchText = '';
             }
         }, 10);
     });
+
+    // Load default search results on page load (in parallel with PDF)
+    (async function loadDefaultSearch() {
+        isLoadingDefault = true;
+        suggestionsQuery.textContent = 'Loading similar papers...';
+        suggestionsList.innerHTML = '<div class="suggestions-loading">Loading default suggestions...</div>';
+        
+        // Trigger search with empty selected text (uses only general context)
+        await searchCitations('', true);
+    })();
 </script>
 {% endblock %}
