@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Graph - {{ paper.title }}{% endblock %}
+
+{% block content %}
+<div class="paper-detail">
+  <div style="display:flex; align-items:baseline; justify-content:space-between; gap: 1rem; flex-wrap: wrap;">
+    <div>
+      <h1 style="margin-bottom: 0.25rem;">Graph view</h1>
+      <div style="color: var(--text-muted);">
+        <a href="/paper/{{ paper.arxiv_id }}">{{ paper.title }}</a>
+        <span style="color: var(--text-muted);">[{{ paper.arxiv_id }}]</span>
+      </div>
+    </div>
+    <div style="display:flex; gap: 0.75rem; align-items:center;">
+      <a href="/paper/{{ paper.arxiv_id }}" class="external-link">← Back to paper</a>
+      <a href="/paper/{{ paper.arxiv_id }}/fulltext" class="external-link">📖 Full text</a>
+    </div>
+  </div>
+
+  <div style="margin-top: 1rem;">
+    <div id="graph-status" style="color: var(--text-muted); font-size: 0.95rem;">
+      Building graph (TEI → sentence matches → UMAP)…
+    </div>
+    <div id="graph" style="width: 100%; height: 75vh; min-height: 520px; margin-top: 0.75rem;"></div>
+  </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+<script>
+  (function () {
+    const arxivId = {{ paper.arxiv_id | tojson }};
+    const statusEl = document.getElementById("graph-status");
+    const graphEl = document.getElementById("graph");
+
+    const palette = [
+      "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+      "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"
+    ];
+
+    function colorForSection(section, index) {
+      if (section === "(self)") return "#111827";
+      return palette[index % palette.length];
+    }
+
+    function escapeHtml(s) {
+      if (!s) return "";
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    async function load() {
+      const url = `/api/paper/${encodeURIComponent(arxivId)}/graph-data?top_k=2&max_sentences=120`;
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`Graph build failed (${resp.status}): ${txt}`);
+      }
+      return await resp.json();
+    }
+
+    load().then((data) => {
+      const points = data.points || [];
+      const sections = [...new Set(points.map(p => p.section_title))];
+      // Put self first.
+      sections.sort((a, b) => (a === "(self)" ? -1 : b === "(self)" ? 1 : a.localeCompare(b)));
+
+      const sectionToIndex = new Map();
+      sections.forEach((s, i) => sectionToIndex.set(s, i));
+
+      const traces = sections.map((section) => {
+        const pts = points.filter(p => p.section_title === section);
+        const idx = sectionToIndex.get(section) || 0;
+
+        const hoverText = pts.map(p => {
+          const title = escapeHtml(p.title);
+          const sid = escapeHtml(p.arxiv_id);
+          const sec = escapeHtml(p.section_title);
+          const score = (p.score === null || p.score === undefined) ? "" : `Score: ${Number(p.score).toFixed(3)}<br>`;
+          const sent = p.source_sentence ? `Context: ${escapeHtml(p.source_sentence).slice(0, 220)}${p.source_sentence.length > 220 ? "…" : ""}` : "";
+          return `<b>${title}</b><br>${sid}<br>Section: ${sec}<br>${score}${sent}`;
+        });
+
+        return {
+          type: "scattergl",
+          mode: "markers",
+          name: section,
+          x: pts.map(p => p.x),
+          y: pts.map(p => p.y),
+          text: hoverText,
+          hoverinfo: "text",
+          customdata: pts.map(p => ({ url: p.url, arxiv_id: p.arxiv_id })),
+          marker: {
+            size: section === "(self)" ? 14 : 9,
+            opacity: section === "(self)" ? 1.0 : 0.85,
+            color: colorForSection(section, idx),
+            line: section === "(self)" ? { width: 1, color: "#ffffff" } : undefined
+          }
+        };
+      });
+
+      const layout = {
+        margin: { l: 30, r: 10, t: 10, b: 30 },
+        hovermode: "closest",
+        legend: { orientation: "h", y: -0.15 },
+        xaxis: { zeroline: false, showgrid: false, title: "" },
+        yaxis: { zeroline: false, showgrid: false, title: "" }
+      };
+
+      Plotly.newPlot(graphEl, traces, layout, { responsive: true, displayModeBar: true });
+      graphEl.on("plotly_click", (evt) => {
+        const pt = evt.points && evt.points[0];
+        if (!pt || !pt.customdata || !pt.customdata.url) return;
+        window.location.href = pt.customdata.url;
+      });
+
+      statusEl.textContent = `Built graph from ${data.num_sentences} sentences (top_k=${data.top_k}). Click a point to open the paper.`;
+    }).catch((err) => {
+      console.error(err);
+      statusEl.textContent = String(err.message || err);
+    });
+  })();
+</script>
+{% endblock %}
+
