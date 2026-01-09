@@ -9,12 +9,11 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+import httpx
 import polars as pl
-from arxiv_crawler.tei_parser import parse_tei_xml
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
-from markupsafe import Markup
 from omegaconf import OmegaConf
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
@@ -26,11 +25,8 @@ from arxiv_search.search import ContextualSearch
 # Paths
 BROWSER_DIR = Path(__file__).parent
 DATA_DIR = BROWSER_DIR.parent / "data"
-# PAPERS_FILE = DATA_DIR / "papers.jsonl"
 CRAWLER_STATE_FILE = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "crawler_state.json"
 PAPERS_FILE = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "papers.jsonl"
-XML_DOCS_DIR = BROWSER_DIR.parent.parent / "arxiv_crawler" / "data" / "v2" / "xml_docs"
-# PAPERS_FILE = DATA_DIR / "papers.jsonl"
 
 # Semantic search / inference paths - RectFlow model
 RECTFLOW_RUN_DIR = (
@@ -304,52 +300,48 @@ async def search(request: Request, q: str = ""):
     )
 
 
+@app.get("/api/pdf/{arxiv_id}")
+async def get_pdf(arxiv_id: str):
+    """Proxy PDF from arXiv."""
+    arxiv_pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
+
+    # httpx follows redirects by default, so 301/302 from arXiv will be handled
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        try:
+            response = await client.get(arxiv_pdf_url)
+            response.raise_for_status()
+
+            return StreamingResponse(
+                iter([response.content]),
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"inline; filename={arxiv_id}.pdf"},
+            )
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(
+                status_code=e.response.status_code, detail=f"Failed to fetch PDF from arXiv: {e.response.status_code}"
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error fetching PDF: {str(e)}")
+
+
 @app.get("/paper/{arxiv_id:path}/fulltext", response_class=HTMLResponse)
 async def paper_fulltext(request: Request, arxiv_id: str):
-    """Display full-text view of a paper from GROBID TEI XML."""
+    """Display PDF viewer for a paper."""
     # Check if paper exists in our index
     paper = arxiv_id_index.get(arxiv_id)
 
-    # Find the XML file
-    xml_file = XML_DOCS_DIR / f"{arxiv_id}.xml.gz"
-    if not xml_file.exists():
-        raise HTTPException(
-            status_code=404,
-            detail=f"Full-text XML not available for paper {arxiv_id}",
-        )
-
-    # URL builder for paper links
-    def paper_url_builder(aid: str) -> str:
-        return f"/paper/{aid}"
-
-    # Parse the TEI XML
-    try:
-        parsed = parse_tei_xml(xml_file, paper_url_builder=paper_url_builder)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error parsing XML for {arxiv_id}: {str(e)}",
-        )
-
-    # Convert toc entries to dicts for template
-    toc_dicts = [{"id": t.id, "num": t.num, "title": t.title} for t in parsed.toc]
+    # Get paper metadata
+    title = paper.get("title", arxiv_id) if paper else arxiv_id
+    authors = paper.get("authors", []) if paper else []
 
     return templates.TemplateResponse(
-        "fulltext.html",
+        "pdf_viewer.html",
         {
             "request": request,
             "arxiv_id": arxiv_id,
             "paper": paper,
-            "parsed": parsed,
-            "title": parsed.title or (paper.get("title") if paper else arxiv_id),
-            "authors": parsed.authors or (paper.get("authors", []) if paper else []),
-            "date": parsed.date,
-            "abstract_html": Markup(parsed.abstract_html),
-            "body_html": Markup(parsed.body_html),
-            "ack_html": Markup(parsed.ack_html),
-            "references_html": Markup(parsed.references_html),
-            "toc": toc_dicts,
-            "bibliography": parsed.bibliography,
+            "title": title,
+            "authors": authors,
         },
     )
 
