@@ -3,6 +3,8 @@
 {% block title %}{{ title }} - PDF Viewer{% endblock %}
 
 {% block content %}
+<!-- PDF.js viewer CSS (includes correct text layer styling) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
 <style>
     /* PDF viewer layout - 2 columns: PDF viewer + suggestions */
     .pdf-viewer-container {
@@ -147,35 +149,16 @@
 
     .pdf-page canvas {
         display: block;
-        width: 100%;
-        height: auto;
     }
 
-    /* Text layer for selection */
-    .textLayer {
-        position: absolute;
-        left: 0;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        overflow: hidden;
-        line-height: 1.0;
-    }
-
-    .textLayer > span {
-        color: transparent;
-        position: absolute;
-        white-space: pre;
-        cursor: text;
-        transform-origin: 0% 0%;
-    }
-
+    /* Text layer: use PDF.js' own CSS from pdf_viewer.min.css.
+       Keep only selection color customization here. */
     .textLayer ::selection {
-        background: rgba(0, 120, 215, 0.4);
+        background: rgba(0, 120, 215, 0.5);
     }
 
     .textLayer ::-moz-selection {
-        background: rgba(0, 120, 215, 0.4);
+        background: rgba(0, 120, 215, 0.5);
     }
 
     .pdf-loading {
@@ -235,6 +218,36 @@
         max-height: 4.2em;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    /* Selected text display (trimmed to model token limit) */
+    .selected-text-display {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .selected-text-display .title {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0 0 0.4rem 0;
+        user-select: none;
+    }
+
+    .selected-text-display .text {
+        margin: 0;
+        font-size: 0.78rem;
+        line-height: 1.35;
+        color: var(--text-secondary);
+        white-space: pre-wrap; /* preserve newlines */
+        word-break: break-word;
+    }
+
+    .selected-text-display .placeholder {
+        color: var(--text-muted);
+        font-style: italic;
     }
 
     .search-params {
@@ -479,6 +492,10 @@
             <div class="suggestions-query" id="suggestions-query">
                 Loading similar papers...
             </div>
+            <div class="selected-text-display">
+                <div class="title">Selected text</div>
+                <div id="selected-text" class="text placeholder">Select text in the PDF.</div>
+            </div>
             <div class="search-params">
                 <div class="search-params-toggle" id="params-toggle">
                     Search Parameters
@@ -567,17 +584,27 @@
         pageDiv.className = 'pdf-page';
         pageDiv.style.width = viewport.width + 'px';
         pageDiv.style.height = viewport.height + 'px';
+        // PDF.js text layer relies on these CSS variables for correct scaling.
+        pageDiv.style.setProperty('--scale-factor', viewport.scale);
+        pageDiv.style.setProperty('--user-unit', viewport.userUnit || 1);
         
         // Create canvas for rendering
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        
+        // Render at devicePixelRatio to avoid subtle scaling/rounding mismatches
+        // between the canvas bitmap and the text layer (gets worse away from 100% zoom).
+        const outputScale = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
+        canvas.style.width = viewport.width + 'px';
+        canvas.style.height = viewport.height + 'px';
         
         // Render PDF page to canvas
         await page.render({
             canvasContext: context,
-            viewport: viewport
+            viewport: viewport,
+            transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null
         }).promise;
         
         pageDiv.appendChild(canvas);
@@ -585,19 +612,21 @@
         // Add text layer for selection
         const textLayerDiv = document.createElement('div');
         textLayerDiv.className = 'textLayer';
-        textLayerDiv.style.width = viewport.width + 'px';
-        textLayerDiv.style.height = viewport.height + 'px';
         
         // Get text content
         const textContent = await page.getTextContent();
         
-        // Render text layer
-        pdfjsLib.renderTextLayer({
-            textContent: textContent,
+        // Render text layer - match PDF.js viewer behavior (dontFlip viewport)
+        const textViewport = viewport.clone({ dontFlip: true });
+        const textLayerTask = pdfjsLib.renderTextLayer({
+            textContentSource: textContent,
             container: textLayerDiv,
-            viewport: viewport,
-            textDivs: []
+            viewport: textViewport,
+            textDivs: [],
+            enhanceTextSelection: true
         });
+        // Ensure the text layer is finished before we append (keeps layers in sync)
+        await textLayerTask.promise;
         
         pageDiv.appendChild(textLayerDiv);
         pdfPages.appendChild(pageDiv);
@@ -764,6 +793,7 @@
     // Semantic search on text selection
     const suggestionsQuery = document.getElementById('suggestions-query');
     const suggestionsList = document.getElementById('suggestions-list');
+    const selectedTextEl = document.getElementById('selected-text');
 
     // Parameters toggle
     const paramsToggle = document.getElementById('params-toggle');
@@ -790,6 +820,29 @@
     let defaultResults = null;
     let isLoadingDefault = false;
 
+    function setSelectedTextDisplay(text, isDefault = false) {
+        if (!selectedTextEl) return;
+        if (isDefault) {
+            selectedTextEl.classList.add('placeholder');
+            selectedTextEl.textContent = 'Select text in the PDF.';
+            return;
+        }
+        selectedTextEl.classList.remove('placeholder');
+        selectedTextEl.textContent = text || '';
+    }
+
+    async function trimToModelMaxLength(text) {
+        const response = await fetch('/api/trim-selected-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text })
+        });
+        if (!response.ok) {
+            throw new Error(`Trim failed: HTTP ${response.status}`);
+        }
+        return await response.json();
+    }
+
     async function searchCitations(text, isDefault = false) {
         if (!isDefault && text === lastSearchText) return;
         if (!isDefault) lastSearchText = text;
@@ -797,6 +850,7 @@
         // Update query display
         if (isDefault) {
             suggestionsQuery.textContent = 'Papers similar to this work (default)';
+            setSelectedTextDisplay('', true);
         } else {
             suggestionsQuery.textContent = text.length > 100 ? text.substring(0, 100) + '...' : text;
         }
@@ -890,14 +944,24 @@
             const selectedText = selection.toString().trim();
 
             if (selectedText.length >= 10) {
-                // User has selected meaningful text - search for it
+                // Trim to what the backend will actually tokenize/use
                 clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    searchCitations(selectedText);
-                }, 300);
+                searchTimeout = setTimeout(async () => {
+                    try {
+                        const trimmed = await trimToModelMaxLength(selectedText);
+                        const modelText = (trimmed.trimmed_text || '').trim();
+                        setSelectedTextDisplay(modelText, false);
+                        searchCitations(modelText);
+                    } catch (err) {
+                        console.error('Trim error:', err);
+                        setSelectedTextDisplay(selectedText, false);
+                        searchCitations(selectedText);
+                    }
+                }, 150);
             } else if (selectedText.length === 0 && defaultResults && !isLoadingDefault) {
                 // No text selected - show default results
                 suggestionsQuery.textContent = 'Papers similar to this work (default)';
+                setSelectedTextDisplay('', true);
                 suggestionsList.innerHTML = defaultResults;
                 attachPreviewListeners();
                 lastSearchText = '';

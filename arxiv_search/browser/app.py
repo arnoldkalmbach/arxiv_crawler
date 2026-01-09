@@ -146,6 +146,57 @@ class SemanticSearchRequest(BaseModel):
     aspect_threshold: float = 0.95
 
 
+class TrimSelectedTextRequest(BaseModel):
+    text: str
+
+
+@app.post("/api/trim-selected-text")
+async def trim_selected_text(request: TrimSelectedTextRequest):
+    """Trim text to the portion that would be tokenized under ContextualSearch max_length.
+
+    Note: ContextualSearch prepends one "general" embedding row, so the task context effectively
+    has room for (max_length - 1) tokens after collation/truncation.
+    """
+    if contextual_search is None:
+        raise HTTPException(status_code=503, detail="Tokenizer not ready yet")
+
+    # Reserve one slot for the prepended general embedding row.
+    max_task_tokens = max(int(INFERENCE_MAX_LENGTH) - 1, 1)
+
+    tokenizer = getattr(getattr(contextual_search, "general_model", None), "tokenizer", None)
+    if tokenizer is None:
+        raise HTTPException(status_code=500, detail="Model tokenizer unavailable")
+
+    text = request.text or ""
+
+    # Use offsets to map back to the original substring.
+    try:
+        encoded = tokenizer(
+            text,
+            return_offsets_mapping=True,
+            truncation=True,
+            max_length=max_task_tokens,
+            add_special_tokens=False,
+        )
+        offsets = encoded.get("offset_mapping") or []
+        if offsets:
+            end_char = int(offsets[-1][1])
+            trimmed = text[:end_char]
+        else:
+            # Fallback: if offsets aren't available, approximate by characters.
+            trimmed = text
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Tokenization failed: {e}")
+
+    return JSONResponse(
+        content={
+            "trimmed_text": trimmed,
+            "was_truncated": len(trimmed) < len(text),
+            "max_task_tokens": max_task_tokens,
+        }
+    )
+
+
 @app.post("/api/semantic-search")
 async def semantic_search(request: SemanticSearchRequest):
     """
